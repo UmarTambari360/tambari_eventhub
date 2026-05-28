@@ -1,0 +1,14 @@
+{
+  "extends": "@eventhub/config/typescript/node",
+  "compilerOptions": {
+    "moduleResolution": "nodenext",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": ["node"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
