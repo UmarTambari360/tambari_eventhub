@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useAuth } from "../../providers/auth-provider.js";
-import { ApiError } from "../../lib/api-client.js";
+import { useAuth } from "../../providers/auth-provider";
+import { ApiError } from "../../lib/api-client";
 
 export default function SignInPage() {
   const { login } = useAuth();

@@ -6,7 +6,7 @@ import { authenticate } from '../middleware/auth.middleware.js';
 import { validateBody } from '../middleware/validate.middleware.js';
 import { registerSchema, loginSchema } from '@eventhub/validators';
 
-const router = Router();
+const router: Router = Router();
 
 // ─── Rate limiters ────────────────────────────────────────────────────────────
 

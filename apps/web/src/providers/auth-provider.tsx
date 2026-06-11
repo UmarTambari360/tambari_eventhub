@@ -11,9 +11,8 @@ import {
 import {
   setAccessToken,
   clearAccessToken,
-  getValidToken,
-} from '../lib/auth-client.js';
-import { apiClient, ApiError } from '../lib/api-client.js';
+} from '../lib/auth-client';
+import { apiClient } from '../lib/api-client';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
@@ -56,7 +55,7 @@ interface AuthContextValue {
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null) as React.Context<AuthContextValue | null>;
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 

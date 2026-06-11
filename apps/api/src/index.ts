@@ -17,7 +17,7 @@ import { authRouter } from './routes/auth.routes.js';
 // PHASE 6: import { uploadRouter } from './routes/upload.routes.js';
 // PHASE 7: import { webhookRouter } from './routes/webhook.routes.js';
 
-const app = express();
+const app: express.Application = express();
 
 // ─── Security ────────────────────────────────────────────────────────────────
 

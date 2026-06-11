@@ -137,12 +137,11 @@ export async function requireNotSuspended(
 ): Promise<void> {
   try {
     const { users } = await import('../db/schema/index.js');
-    const { eq: drizzleEq } = await import('drizzle-orm');
 
     const [user] = await db
       .select({ isSuspended: users.isSuspended })
       .from(users)
-      .where(drizzleEq(users.id, req.user.userId))
+      .where(eq(users.id, req.user.userId))
       .limit(1);
 
     if (!user) {

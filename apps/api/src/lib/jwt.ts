@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { SignOptions } from 'jsonwebtoken';
 import { config } from '../config/index.js';
 import { isTokenBlacklisted } from './redis.js';
 import { logger } from './logger.js';
@@ -21,15 +22,17 @@ export interface RefreshTokenPayload {
 }
 
 export function signAccessToken(payload: Omit<AccessTokenPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, config.JWT_ACCESS_SECRET, {
-    expiresIn: config.JWT_ACCESS_EXPIRES_IN,
-  });
+  const options: SignOptions = {
+    expiresIn: '15m',
+  };
+  return jwt.sign(payload, config.JWT_ACCESS_SECRET, options);
 }
 
 export function signRefreshToken(payload: Omit<RefreshTokenPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, config.JWT_REFRESH_SECRET, {
-    expiresIn: config.JWT_REFRESH_EXPIRES_IN,
-  });
+  const options: SignOptions = {
+    expiresIn: '15m',
+  };
+  return jwt.sign(payload, config.JWT_REFRESH_SECRET, options);
 }
 
 /**

@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useAuth } from "../../providers/auth-provider.js";
-import { ApiError } from "../../lib/api-client.js";
+import { useAuth } from "../../providers/auth-provider";
+import { ApiError } from "../../lib/api-client";
 
 export default function SignUpPage() {
   const { register } = useAuth();
@@ -41,7 +41,7 @@ export default function SignUpPage() {
         fullName: formData.fullName,
         email: formData.email,
         password: formData.password,
-        phoneNumber: formData.phoneNumber || undefined,
+        phoneNumber: formData.phoneNumber,
       });
       router.push("/");
     } catch (err) {

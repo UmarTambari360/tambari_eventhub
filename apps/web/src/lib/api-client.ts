@@ -1,6 +1,6 @@
 'use client';
 
-import { getValidToken } from './auth-client.js';
+import { getValidToken } from './auth-client';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
@@ -67,21 +67,21 @@ export const apiClient = {
   post: <T>(path: string, body?: unknown, requiresAuth = true) =>
     request<T>(
       path,
-      { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined },
+      { method: 'POST', body: body !== undefined ? JSON.stringify(body) : null },
       requiresAuth
     ),
 
   put: <T>(path: string, body?: unknown, requiresAuth = true) =>
     request<T>(
       path,
-      { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined },
+      { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : null },
       requiresAuth
     ),
 
   patch: <T>(path: string, body?: unknown, requiresAuth = true) =>
     request<T>(
       path,
-      { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined },
+      { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : null },
       requiresAuth
     ),
 
