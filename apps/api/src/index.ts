@@ -11,8 +11,11 @@ import { getRedis, closeRedis } from './lib/redis.js';
 import { closeDb } from './db/index.js';
 import { requestIdMiddleware } from './middleware/requestId.middleware.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
-import { healthRouter } from './routes/health.routes.js';
-import { authRouter } from './routes/auth.routes.js';
+import { healthRouter } from './routes/health.routes';
+import { authRouter } from './routes/auth.routes';
+import { organizerRouter } from './routes/organizer.routes';
+import { adminRouter } from './routes/admin.routes';
+import { createEmailWorker } from './jobs/workers/email.worker';
 
 // PHASE 6: import { uploadRouter } from './routes/upload.routes.js';
 // PHASE 7: import { webhookRouter } from './routes/webhook.routes.js';
@@ -25,7 +28,9 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: isDev ? ['http://localhost:3000'] : [config.FRONTEND_URL],
+    origin: isDev
+      ? ['http://localhost:3000']
+      : [config.FRONTEND_URL],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
@@ -33,11 +38,11 @@ app.use(
   })
 );
 
-// ─── Request ID (must be before logging) ─────────────────────────────────────
+// ─── Request ID ───────────────────────────────────────────────────────────────
 
 app.use(requestIdMiddleware);
 
-// ─── Logging ─────────────────────────────────────────────────────────────────
+// ─── Logging ──────────────────────────────────────────────────────────────────
 
 app.use(
   morgan(isDev ? 'dev' : 'combined', {
@@ -53,22 +58,22 @@ app.use(
 
 // ─── Body Parsers ─────────────────────────────────────────────────────────────
 
-// NOTE: Webhook route must register BEFORE json() parser to get raw body.
 // PHASE 7: app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRouter);
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser(config.COOKIE_SECRET));
 
-// ─── Routes ──────────────────────────────────────────────────────────────────
+// ─── Routes ───────────────────────────────────────────────────────────────────
 
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);
+app.use('/organizer', organizerRouter);
+app.use('/admin', adminRouter);
 
 // PHASE 6: app.use('/upload', uploadRouter);
-// PHASE 7: app.use('/webhooks', webhookRouter);
 
-// 404 handler — must be after all routes
+// 404 handler
 app.use((_req, res) => {
   res.status(404).json({
     success: false,
@@ -79,18 +84,22 @@ app.use((_req, res) => {
   });
 });
 
-// ─── Global Error Handler ─────────────────────────────────────────────────────
-
+// Global error handler — must be last
 app.use(errorMiddleware);
 
 // ─── Startup ──────────────────────────────────────────────────────────────────
 
 async function start(): Promise<void> {
+  // Connect Redis
   try {
     await getRedis().connect();
   } catch {
-    // Redis failure is non-fatal at startup — logged inside getRedis()
+    // Redis failure is non-fatal at startup
   }
+
+  // Start BullMQ workers
+  createEmailWorker();
+  logger.info('Background workers started');
 
   const server = app.listen(config.PORT, () => {
     logger.info('API server started', {
@@ -100,15 +109,13 @@ async function start(): Promise<void> {
     });
   });
 
-  // ─── Graceful Shutdown ────────────────────────────────────────────────────
-
   const shutdown = async (signal: string): Promise<void> => {
     logger.info(`${signal} received — shutting down gracefully`);
 
     server.close(async () => {
       logger.info('HTTP server closed');
 
-      // PHASE 8: await closeBullMQWorkers();
+      // PHASE 7: await closeBullMQWorkers();
 
       await closeRedis();
       await closeDb();

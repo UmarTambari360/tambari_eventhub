@@ -4,6 +4,8 @@ import type { AccessTokenPayload } from '../lib/jwt.js';
 import { db } from '../db/index.js';
 import { organizerProfiles } from '../db/schema/index.js';
 import { eq } from 'drizzle-orm';
+import { UnauthorizedError, ForbiddenError } from './error.middleware.js';
+import type { UserRole } from '@eventhub/types';
 
 // Extend Express Request with authenticated user context
 declare global {
@@ -12,6 +14,15 @@ declare global {
       user: AccessTokenPayload;
     }
   }
+}
+
+export interface AuthenticatedRequest extends Request {
+  user: {
+    userId: string;
+    email: string;
+    role: UserRole;
+    jti: string;
+  };
 }
 
 /**

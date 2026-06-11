@@ -1,6 +1,7 @@
 {
   "extends": "@eventhub/config/typescript/node",
   "compilerOptions": {
+    "jsx": "react",
     "moduleResolution": "nodenext",
     "outDir": "./dist",
     "rootDir": "./src",

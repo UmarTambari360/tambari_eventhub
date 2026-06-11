@@ -1,17 +1,7 @@
 'use client';
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-  type ReactNode,
-} from 'react';
-import {
-  setAccessToken,
-  clearAccessToken,
-} from '../lib/auth-client';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { setAccessToken, clearAccessToken } from '../lib/auth-client';
 import { apiClient } from '../lib/api-client';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
@@ -44,6 +34,7 @@ interface AuthApiResponse {
 }
 
 interface AuthContextValue {
+  accessToken: string | null;
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -55,14 +46,14 @@ interface AuthContextValue {
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-const AuthContext = createContext<AuthContextValue | null>(null) as React.Context<AuthContextValue | null>;
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
+  const [accessToken, setAccessTokenState] = useState<string | null>(null);
   /**
    * On mount, attempt a silent refresh to restore session.
    * If the httpOnly refresh cookie is still valid, this succeeds.
@@ -86,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
 
         if (json.success && !cancelled) {
-          setAccessToken(json.data.accessToken);
+          setAccessTokenState(json.data.accessToken);
           setUser(json.data.user);
         }
       } catch {
@@ -105,12 +96,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (input: RegisterInput): Promise<void> => {
     const data = await apiClient.post<AuthApiResponse>('/auth/register', input, false);
     setAccessToken(data.accessToken);
+    setAccessTokenState(data.accessToken);
     setUser(data.user);
   }, []);
 
   const login = useCallback(async (input: LoginInput): Promise<void> => {
     const data = await apiClient.post<AuthApiResponse>('/auth/login', input, false);
     setAccessToken(data.accessToken);
+    setAccessTokenState(data.accessToken);
     setUser(data.user);
   }, []);
 
@@ -121,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Best effort — clear client state regardless
     } finally {
       clearAccessToken();
+      setAccessTokenState(null);
       setUser(null);
     }
   }, []);
@@ -132,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Best effort
     } finally {
       clearAccessToken();
+      setAccessTokenState(null);
       setUser(null);
     }
   }, []);
@@ -139,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
+        accessToken,
         user,
         isLoading,
         isAuthenticated: user !== null,
