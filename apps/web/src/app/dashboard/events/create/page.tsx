@@ -8,7 +8,8 @@ import { Plus, Trash2, Loader2, ChevronDown, ChevronUp, AlertCircle } from 'luci
 import { createEventSchema, type CreateEventInput } from '@eventhub/validators';
 import { useAuth } from '@/hooks/use-auth';
 import { createEventAction } from '@/actions/event.actions';
-import { cn, formatNaira } from '@/lib/utils';
+import { ImageUpload } from '@/components/shared/image-upload';
+import { cn } from '@/lib/utils';
 
 const CATEGORIES = [
   'Music',
@@ -33,6 +34,7 @@ export default function CreateEventPage() {
     register,
     control,
     handleSubmit,
+    setValue,
     watch,
     formState: { errors },
   } = useForm<CreateEventInput>({
@@ -56,6 +58,10 @@ export default function CreateEventPage() {
     name: 'ticketTypes',
   });
 
+  // Watch image fields for the ImageUpload component
+  const bannerImageUrl = watch('bannerImageUrl');
+  const thumbnailUrl = watch('thumbnailUrl');
+
   async function onSubmit(data: CreateEventInput) {
     if (!auth?.accessToken) return;
     setSubmitting(true);
@@ -70,6 +76,8 @@ export default function CreateEventPage() {
       setSubmitting(false);
     }
   }
+
+  if (!auth?.accessToken) return null;
 
   return (
     <div className="max-w-3xl">
@@ -90,7 +98,6 @@ export default function CreateEventPage() {
         <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-5">
           <h2 className="font-semibold text-gray-900">Event Details</h2>
 
-          {/* Title */}
           <div>
             <label className="label-text">
               Event Title <span className="text-red-500">*</span>
@@ -103,7 +110,6 @@ export default function CreateEventPage() {
             {errors.title && <p className="field-error">{errors.title.message}</p>}
           </div>
 
-          {/* Description */}
           <div>
             <label className="label-text">
               Description <span className="text-red-500">*</span>
@@ -117,7 +123,6 @@ export default function CreateEventPage() {
             {errors.description && <p className="field-error">{errors.description.message}</p>}
           </div>
 
-          {/* Category */}
           <div>
             <label className="label-text">Category</label>
             <select {...register('category')} className={inputCls(false) + ' bg-white'}>
@@ -129,6 +134,39 @@ export default function CreateEventPage() {
               ))}
             </select>
           </div>
+        </section>
+
+        {/* ── Images ── */}
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-6">
+          <h2 className="font-semibold text-gray-900">Event Images</h2>
+
+          <ImageUpload
+            type="event-banner"
+            value={bannerImageUrl ?? ''}
+            publicId={watch('bannerPublicId') ?? ''}
+            accessToken={auth.accessToken}
+            label="Banner Image"
+            hint="Recommended: 1920×1080px (16:9). Shown on the event detail page."
+            aspectRatio="16/9"
+            onChange={(result) => {
+              setValue('bannerImageUrl', result?.url ?? '');
+              setValue('bannerPublicId', result?.publicId ?? '');
+            }}
+          />
+
+          <ImageUpload
+            type="event-thumbnail"
+            value={thumbnailUrl ?? ''}
+            publicId={watch('thumbnailPublicId') ?? ''}
+            accessToken={auth.accessToken}
+            label="Thumbnail Image"
+            hint="Recommended: 800×600px (4:3). Shown in event listings and search results."
+            aspectRatio="4/3"
+            onChange={(result) => {
+              setValue('thumbnailUrl', result?.url ?? '');
+              setValue('thumbnailPublicId', result?.publicId ?? '');
+            }}
+          />
         </section>
 
         {/* ── Location & Date ── */}
@@ -200,7 +238,7 @@ export default function CreateEventPage() {
             <div>
               <h2 className="font-semibold text-gray-900">Ticket Types</h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                At least one ticket type required. Set price to ₦0 for free tickets.
+                At least one ticket type required. Set price to 0 for free tickets.
               </p>
             </div>
             <button
@@ -275,7 +313,6 @@ function TicketTypeRow({ index, register, errors, canRemove, onRemove }: TicketT
 
   return (
     <div className="rounded-xl border border-gray-200 overflow-hidden">
-      {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3 bg-gray-50 cursor-pointer"
         onClick={() => setExpanded((e) => !e)}
@@ -302,7 +339,6 @@ function TicketTypeRow({ index, register, errors, canRemove, onRemove }: TicketT
         </div>
       </div>
 
-      {/* Fields */}
       {expanded && (
         <div className="px-4 py-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -320,7 +356,7 @@ function TicketTypeRow({ index, register, errors, canRemove, onRemove }: TicketT
 
             <div>
               <label className="label-text">
-                Price (₦) — enter 0 for free <span className="text-red-500">*</span>
+                Price in kobo — 0 for free <span className="text-red-500">*</span>
               </label>
               <input
                 {...register(`ticketTypes.${index}.price`, { valueAsNumber: true })}
@@ -331,7 +367,7 @@ function TicketTypeRow({ index, register, errors, canRemove, onRemove }: TicketT
                 placeholder="0"
               />
               {ttErrors?.price && <p className="field-error">{ttErrors.price.message}</p>}
-              <p className="mt-0.5 text-xs text-gray-400">Enter in kobo (e.g. 1500000 = ₦15,000)</p>
+              <p className="mt-0.5 text-xs text-gray-400">e.g. 1500000 = ₦15,000</p>
             </div>
           </div>
 
@@ -382,8 +418,6 @@ function TicketTypeRow({ index, register, errors, canRemove, onRemove }: TicketT
     </div>
   );
 }
-
-// ── Style helpers ─────────────────────────────────────────────────────────────
 
 function inputCls(hasError: boolean): string {
   return cn(

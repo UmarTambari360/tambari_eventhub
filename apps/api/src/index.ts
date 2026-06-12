@@ -16,9 +16,9 @@ import { authRouter } from './routes/auth.routes.js';
 import { organizerRouter } from './routes/organizer.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { eventRouter } from './routes/event.routes.js';
+import { uploadRouter } from './routes/upload.routes.js';
 import { createEmailWorker } from './jobs/workers/email.worker.js';
 
-// PHASE 6: import { uploadRouter } from './routes/upload.routes.js';
 // PHASE 7: import { webhookRouter } from './routes/webhook.routes.js';
 
 const app: express.Application = express();
@@ -69,8 +69,7 @@ app.use('/auth', authRouter);
 app.use('/organizer', organizerRouter);
 app.use('/admin', adminRouter);
 app.use('/events', eventRouter);
-
-// PHASE 6: app.use('/upload', uploadRouter);
+app.use('/upload', uploadRouter);
 
 // 404 handler
 app.use((_req, res) => {
