@@ -7,7 +7,6 @@ import { authenticate } from '../middleware/auth.middleware.js';
 import {
   uploadBuffer,
   deleteAsset,
-  type UploadFolder,
 } from '../services/cloudinary.service.js';
 import { logger } from '../lib/logger.js';
 

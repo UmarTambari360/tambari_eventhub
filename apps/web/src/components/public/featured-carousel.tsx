@@ -52,7 +52,7 @@ export function FeaturedCarousel({ events }: FeaturedCarouselProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
-        className="relative h-[420px] md:h-[500px]"
+        className="relative h-105 md:h-125"
       >
         {/* Background */}
         {event.bannerImageUrl ? (
@@ -63,11 +63,11 @@ export function FeaturedCarousel({ events }: FeaturedCarouselProps) {
             className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-indigo-700" />
+          <div className="absolute inset-0 bg-linear-to-br from-violet-600 to-indigo-700" />
         )}
 
         {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/30 to-transparent" />
 
         {/* Content */}
         <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">

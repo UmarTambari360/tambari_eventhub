@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Calendar, MapPin, Users, Tag, ExternalLink } from 'lucide-react';
 import { getEventBySlugAction } from '@/actions/event.actions';
-import { TicketSelector } from '@/components/public/ticket-selector';
 import { EventTicketSelectorWrapper } from '@/components/public/event-ticket-selector-wrapper';
 import { formatDate } from '@/lib/utils';
 
@@ -72,7 +71,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         {/* Main content */}
         <div className="lg:col-span-2">
           {/* Banner */}
-          <div className="relative mb-6 h-72 md:h-96 rounded-2xl overflow-hidden bg-gradient-to-br from-violet-100 to-indigo-100">
+          <div className="relative mb-6 h-72 md:h-96 rounded-2xl overflow-hidden bg-linear-to-br from-violet-100 to-indigo-100">
             {event.bannerImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img

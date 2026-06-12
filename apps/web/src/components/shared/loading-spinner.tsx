@@ -15,7 +15,7 @@ export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) 
   return (
     <div
       className={cn(
-        'animate-spin rounded-full border-violet-600 border-t-transparent',
+        'animate-spin rounded-full border-(--primary) border-t-transparent',
         sizeClasses[size],
         className
       )}
@@ -27,7 +27,7 @@ export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) 
 
 export function FullPageSpinner() {
   return (
-    <div className="flex min-h-[400px] items-center justify-center">
+    <div className="flex min-h-100 items-center justify-center">
       <LoadingSpinner size="lg" />
     </div>
   );

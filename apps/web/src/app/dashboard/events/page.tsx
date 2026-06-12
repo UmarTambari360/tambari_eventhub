@@ -11,7 +11,7 @@ import {
 } from '@/actions/event.actions';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
-import { formatDate, formatNaira } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import type { OrganizerEventDTO } from '@eventhub/types';
 
 export default function DashboardEventsPage() {

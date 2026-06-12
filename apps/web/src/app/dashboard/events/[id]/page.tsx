@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Save,
@@ -11,8 +11,6 @@ import {
   EyeOff,
   XCircle,
   ArrowLeft,
-  Plus,
-  Trash2,
   AlertCircle,
   CheckCircle,
 } from 'lucide-react';
@@ -69,21 +67,22 @@ export default function EditEventPage() {
       const result = await getOrganizerEventDetailAction(id, auth.accessToken!);
       if (result.success && result.data) {
         setEvent(result.data);
+        const organizerEvent = result.data as OrganizerEventDTO & { description?: string };
         // Pre-fill form
         reset({
-          title: result.data.title,
-          description: result.data.description ?? '',
-          venue: result.data.venue,
-          location: result.data.location,
-          address: result.data.address ?? '',
-          eventDate: result.data.eventDate
-            ? new Date(result.data.eventDate).toISOString().slice(0, 16)
+          title: organizerEvent.title,
+          description: organizerEvent.description ?? '',
+          venue: organizerEvent.venue,
+          location: organizerEvent.location,
+          eventDate: organizerEvent.eventDate
+            ? new Date(organizerEvent.eventDate).toISOString().slice(0, 16)
             : '',
-          eventEndDate: result.data.eventEndDate
-            ? new Date(result.data.eventEndDate).toISOString().slice(0, 16)
+          eventEndDate: organizerEvent.eventEndDate
+            ? new Date(organizerEvent.eventEndDate).toISOString().slice(0, 16)
             : '',
-          category: (result.data.category as (typeof CATEGORIES)[number] | undefined) ?? undefined,
-          tags: result.data.tags,
+          category:
+            (organizerEvent.category as (typeof CATEGORIES)[number] | undefined) ?? undefined,
+          tags: organizerEvent.tags,
         });
       }
       setLoading(false);
@@ -100,7 +99,7 @@ export default function EditEventPage() {
 
     if (result.success) {
       setSuccessMsg('Event updated successfully.');
-      setEvent((prev) => (prev ? { ...prev, ...data } : prev));
+      setEvent((prev) => (prev ? { ...prev, ...(data as Partial<OrganizerEventDTO>) } : prev));
     } else {
       setError(result.error ?? 'Failed to update event');
     }

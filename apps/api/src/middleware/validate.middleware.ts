@@ -1,5 +1,7 @@
-import type { Request, Response, NextFunction } from 'express';
-import type { ZodSchema } from 'zod';
+import type { 
+  Request, 
+  Response, NextFunction } from 'express';
+import type { ZodSchema }  from 'zod';
 
 /**
  * Validates req.body against the provided Zod schema.

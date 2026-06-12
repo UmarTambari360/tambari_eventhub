@@ -1,8 +1,8 @@
-import jwt from 'jsonwebtoken';
-import { SignOptions } from 'jsonwebtoken';
-import { config } from '../config/index.js';
+import jwt                    from 'jsonwebtoken';
+import { SignOptions }        from 'jsonwebtoken';
+import { config }             from '../config/index.js';
 import { isTokenBlacklisted } from './redis.js';
-import { logger } from './logger.js';
+import { logger }             from './logger.js';
 
 export interface AccessTokenPayload {
   userId: string;
@@ -21,14 +21,16 @@ export interface RefreshTokenPayload {
   exp?: number;
 }
 
-export function signAccessToken(payload: Omit<AccessTokenPayload, 'iat' | 'exp'>): string {
+export function signAccessToken(
+  payload: Omit<AccessTokenPayload, 'iat' | 'exp'>): string {
   const options: SignOptions = {
     expiresIn: '15m',
   };
   return jwt.sign(payload, config.JWT_ACCESS_SECRET, options);
 }
 
-export function signRefreshToken(payload: Omit<RefreshTokenPayload, 'iat' | 'exp'>): string {
+export function signRefreshToken(
+  payload: Omit<RefreshTokenPayload, 'iat' | 'exp'>): string {
   const options: SignOptions = {
     expiresIn: '15m',
   };
@@ -39,11 +41,13 @@ export function signRefreshToken(payload: Omit<RefreshTokenPayload, 'iat' | 'exp
  * Verifies an access token and checks it has not been blacklisted in Redis.
  * Throws if invalid, expired, or blacklisted.
  */
-export async function verifyAccessToken(token: string): Promise<AccessTokenPayload> {
+export async function verifyAccessToken(
+  token: string): Promise<AccessTokenPayload> {
   let payload: AccessTokenPayload;
 
   try {
-    payload = jwt.verify(token, config.JWT_ACCESS_SECRET) as AccessTokenPayload;
+    payload = jwt.verify(
+      token, config.JWT_ACCESS_SECRET) as AccessTokenPayload;
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {
       throw new Error('ACCESS_TOKEN_EXPIRED');

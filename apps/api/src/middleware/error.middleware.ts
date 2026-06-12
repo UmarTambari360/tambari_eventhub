@@ -1,6 +1,8 @@
-import type { Request, Response, NextFunction } from 'express';
-import { ZodError } from 'zod';
-import { logger } from '../lib/logger.js';
+import type { 
+  Request, 
+  Response, NextFunction } from 'express';
+import { ZodError }        from 'zod';
+import { logger }          from '../lib/logger.js';
 
 /**
  * Base class for all operational (expected) errors.

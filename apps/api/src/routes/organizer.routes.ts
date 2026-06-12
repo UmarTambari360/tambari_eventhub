@@ -9,8 +9,6 @@ import {
   submitApplication,
   getApplicationStatus,
   getOrganizerProfile,
-  listApplicationsForAdmin,
-  getApplicationByIdForAdmin,
 } from '../services/organizer.service.js';
 import { getPaystackBanks, verifyBankAccount } from '../services/paystack.service.js';
 import { submitApplicationSchema, verifyBankAccountSchema } from '@eventhub/validators';

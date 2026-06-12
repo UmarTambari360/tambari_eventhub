@@ -1,22 +1,23 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { useAuth } from "../../providers/auth-provider";
-import { ApiError } from "../../lib/api-client";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../providers/auth-provider';
+import { ApiError } from '../../lib/api-client';
 
 export default function SignUpPage() {
   const { register } = useAuth();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phoneNumber: "",
-    password: "",
-    confirmPassword: "",
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    password: '',
+    confirmPassword: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,269 +30,142 @@ export default function SignUpPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
+      setError('Passwords do not match.');
       return;
     }
-
     setIsSubmitting(true);
     try {
       await register({
         fullName: formData.fullName,
         email: formData.email,
         password: formData.password,
-        phoneNumber: formData.phoneNumber,
+        // RegisterInput expects a string for phoneNumber, so ensure we pass
+        // an empty string when no phone number is provided.
+        phoneNumber: formData.phoneNumber || '',
       });
-      router.push("/");
+      router.push('/');
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
+      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  const fields = [
+    {
+      id: 'fullName',
+      label: 'Full name',
+      type: 'text',
+      autoComplete: 'name',
+      placeholder: 'Emeka Okafor',
+      required: true,
+    },
+    {
+      id: 'email',
+      label: 'Email address',
+      type: 'email',
+      autoComplete: 'email',
+      placeholder: 'you@example.com',
+      required: true,
+    },
+    {
+      id: 'phoneNumber',
+      label: 'Phone number',
+      type: 'tel',
+      autoComplete: 'tel',
+      placeholder: '+2348012345678',
+      required: false,
+      hint: 'optional',
+    },
+    {
+      id: 'password',
+      label: 'Password',
+      type: 'password',
+      autoComplete: 'new-password',
+      placeholder: 'Min. 8 characters',
+      required: true,
+    },
+    {
+      id: 'confirmPassword',
+      label: 'Confirm password',
+      type: 'password',
+      autoComplete: 'new-password',
+      placeholder: 'Repeat your password',
+      required: true,
+    },
+  ];
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "1.5rem",
-        background: "var(--background)",
-      }}
-    >
+    <main className="min-h-screen flex items-center justify-center px-4 py-12 bg-(--surface-raised)">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        style={{
-          width: "100%",
-          maxWidth: "420px",
-          border: "1px solid #e5e7eb",
-          borderRadius: "12px",
-          padding: "2rem",
-          background: "var(--background)",
-        }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className="w-full max-w-110"
       >
-        <h1
-          style={{
-            fontSize: "1.5rem",
-            fontWeight: 700,
-            marginBottom: "0.25rem",
-          }}
-        >
-          Create your account
-        </h1>
-        <p
-          style={{
-            color: "#6b7280",
-            marginBottom: "1.5rem",
-            fontSize: "0.9rem",
-          }}
-        >
-          Join EventHub and start discovering amazing events.
-        </p>
-
-        {error && (
-          <div
-            style={{
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
-              borderRadius: "8px",
-              padding: "0.75rem 1rem",
-              marginBottom: "1rem",
-              color: "#b91c1c",
-              fontSize: "0.875rem",
-            }}
-          >
-            {error}
+        <div className="card p-8">
+          <div className="flex justify-center mb-6">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-600 text-white text-lg font-black">
+              E
+            </div>
           </div>
-        )}
 
-        <form onSubmit={(e) => void handleSubmit(e)} noValidate>
-          <div style={{ marginBottom: "1rem" }}>
-            <label
-              htmlFor="fullName"
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                marginBottom: "0.375rem",
-              }}
+          <h1 className="heading-xl text-(--text-primary) text-center mb-1">
+            Create your account
+          </h1>
+          <p className="body-sm text-(--text-muted) text-center mb-6">
+            Join EventHub and discover amazing events
+          </p>
+
+          {error && (
+            <div className="flex items-start gap-2.5 rounded-lg bg-(--danger-light) border border-(--danger)/20 p-3.5 mb-5">
+              <AlertCircle className="h-4 w-4 text-(--danger) mt-0.5 shrink-0" />
+              <p className="text-sm text-(--danger) font-medium">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">
+            {fields.map((f) => (
+              <div key={f.id}>
+                <label htmlFor={f.id} className="label-text">
+                  {f.label}{' '}
+                  {f.hint && (
+                    <span className="text-(--text-muted) font-normal">({f.hint})</span>
+                  )}
+                </label>
+                <input
+                  id={f.id}
+                  name={f.id}
+                  type={f.type}
+                  autoComplete={f.autoComplete}
+                  required={f.required}
+                  value={formData[f.id as keyof typeof formData]}
+                  onChange={handleChange}
+                  placeholder={f.placeholder}
+                  className="input-base"
+                />
+              </div>
+            ))}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="btn btn-primary btn-md w-full mt-2"
             >
-              Full name
-            </label>
-            <input
-              id="fullName"
-              name="fullName"
-              type="text"
-              autoComplete="name"
-              required
-              value={formData.fullName}
-              onChange={handleChange}
-              placeholder="Emeka Okafor"
-              style={inputStyle}
-            />
-          </div>
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Creating account…' : 'Create account'}
+            </button>
+          </form>
 
-          <div style={{ marginBottom: "1rem" }}>
-            <label
-              htmlFor="email"
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                marginBottom: "0.375rem",
-              }}
-            >
-              Email address
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="you@example.com"
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={{ marginBottom: "1rem" }}>
-            <label
-              htmlFor="phoneNumber"
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                marginBottom: "0.375rem",
-              }}
-            >
-              Phone number{" "}
-              <span style={{ color: "#9ca3af", fontWeight: 400 }}>
-                (optional)
-              </span>
-            </label>
-            <input
-              id="phoneNumber"
-              name="phoneNumber"
-              type="tel"
-              autoComplete="tel"
-              value={formData.phoneNumber}
-              onChange={handleChange}
-              placeholder="+2348012345678"
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={{ marginBottom: "1rem" }}>
-            <label
-              htmlFor="password"
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                marginBottom: "0.375rem",
-              }}
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Min. 8 characters"
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={{ marginBottom: "1.5rem" }}>
-            <label
-              htmlFor="confirmPassword"
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                marginBottom: "0.375rem",
-              }}
-            >
-              Confirm password
-            </label>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Repeat your password"
-              style={inputStyle}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            style={buttonStyle(isSubmitting)}
-          >
-            {isSubmitting ? "Creating account…" : "Create account"}
-          </button>
-        </form>
-
-        <p
-          style={{
-            textAlign: "center",
-            marginTop: "1.25rem",
-            fontSize: "0.875rem",
-            color: "#6b7280",
-          }}
-        >
-          Already have an account?{" "}
-          <Link href="/sign-in" style={{ color: "#2563eb", fontWeight: 500 }}>
-            Sign in
-          </Link>
-        </p>
+          <p className="text-center mt-5 body-sm text-(--text-muted)">
+            Already have an account?{' '}
+            <Link href="/sign-in" className="font-semibold text-(--primary) hover:underline">
+              Sign in
+            </Link>
+          </p>
+        </div>
       </motion.div>
     </main>
   );
-}
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "0.625rem 0.875rem",
-  border: "1px solid #d1d5db",
-  borderRadius: "8px",
-  fontSize: "0.9375rem",
-  outline: "none",
-  background: "var(--background)",
-  color: "var(--foreground)",
-  transition: "border-color 0.15s",
-};
-
-function buttonStyle(disabled: boolean): React.CSSProperties {
-  return {
-    width: "100%",
-    padding: "0.75rem",
-    background: disabled ? "#93c5fd" : "#2563eb",
-    color: "#ffffff",
-    border: "none",
-    borderRadius: "8px",
-    fontSize: "0.9375rem",
-    fontWeight: 600,
-    cursor: disabled ? "not-allowed" : "pointer",
-    transition: "background 0.15s",
-  };
 }

@@ -1,6 +1,6 @@
-import { Queue } from 'bullmq';
+import { Queue }    from 'bullmq';
 import { getRedis } from '../lib/redis';
-import { logger } from '../lib/logger';
+import { logger }   from '../lib/logger';
 
 // Connection config — reuses the existing Redis client
 function getConnection() {

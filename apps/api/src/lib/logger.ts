@@ -1,4 +1,4 @@
-import winston from 'winston';
+import winston           from 'winston';
 import { config, isDev } from '../config/index.js';
 
 const { combine, timestamp, errors, json, colorize, printf } = winston.format;

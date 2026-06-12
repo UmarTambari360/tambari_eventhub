@@ -29,37 +29,30 @@ export function CategoryFilterBar() {
     } else {
       params.delete('category');
     }
-    params.delete('page'); // reset page on filter change
+    params.delete('page');
     router.push(`${pathname}?${params.toString()}`);
   }
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-      <button
-        onClick={() => handleSelect(null)}
-        className={cn(
-          'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors whitespace-nowrap',
-          !currentCategory
-            ? 'bg-violet-600 border-violet-600 text-white'
-            : 'border-gray-200 text-gray-600 hover:border-violet-300 hover:text-violet-700'
-        )}
-      >
-        All Events
-      </button>
-      {CATEGORIES.map((cat) => (
-        <button
-          key={cat}
-          onClick={() => handleSelect(cat)}
-          className={cn(
-            'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors whitespace-nowrap',
-            currentCategory === cat
-              ? 'bg-violet-600 border-violet-600 text-white'
-              : 'border-gray-200 text-gray-600 hover:border-violet-300 hover:text-violet-700'
-          )}
-        >
-          {cat}
-        </button>
-      ))}
+      {[null, ...CATEGORIES].map((cat) => {
+        const active = cat === null ? !currentCategory : currentCategory === cat;
+        return (
+          <button
+            key={cat ?? 'all'}
+            onClick={() => handleSelect(cat)}
+            className={cn(
+              'shrink-0 rounded-full px-4 py-1.5 caption font-semibold transition-all whitespace-nowrap',
+              'border',
+              active
+                ? 'bg-(--primary) border-(--primary) text-white'
+                : 'border-(--border) text-(--text-muted) hover:border-(--primary) hover:text-(--primary) bg-(--surface)'
+            )}
+          >
+            {cat ?? 'All Events'}
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -40,13 +40,13 @@ function computeIsFree(ticketTypeRows: Array<{ price: number }>): boolean {
 /**
  * Derives lowestPrice for list display.
  */
-function computeLowestPrice(ticketTypeRows: Array<{ price: number; isActive: boolean }>): number | null {
-  const active = ticketTypeRows.filter((t) => t.isActive);
-  if (active.length === 0) return null;
-  const prices = active.map((t) => t.price);
-  const min = Math.min(...prices);
-  return min === 0 ? null : min; // null = free
-}
+// function computeLowestPrice(ticketTypeRows: Array<{ price: number; isActive: boolean }>): number | null {
+  // const active = ticketTypeRows.filter((t) => t.isActive);
+  // if (active.length === 0) return null;
+  // const prices = active.map((t) => t.price);
+  // const min = Math.min(...prices);
+  // return min === 0 ? null : min; // null = free
+// }
 
 function invalidateEventCache(slug: string): Promise<void> {
   return cacheDel(`event:${slug}`, FEATURED_CACHE_KEY);

@@ -1,4 +1,4 @@
-import { v2 as cloudinary } from 'cloudinary';
+import { type UploadApiOptions, v2 as cloudinary } from 'cloudinary';
 import { config } from '../config/index.js';
 import { logger } from '../lib/logger.js';
 
@@ -81,7 +81,7 @@ export async function uploadBuffer(
   const { transformation, eager } = TRANSFORMS[folder];
 
   return new Promise((resolve, reject) => {
-    const uploadOptions: Parameters<typeof cloudinary.uploader.upload_stream>[0] = {
+    const uploadOptions: UploadApiOptions = {
       folder,
       resource_type: 'image',
       use_filename: !!options.filename,
