@@ -1,5 +1,11 @@
 import * as React from 'react';
-import { Body, Container, Head, Heading, Hr, Html, Preview, Text } from '@react-email/components';
+import { 
+    Body, 
+    Container, 
+    Head, 
+    Heading, 
+    Hr, Html, 
+    Preview, Text } from '@react-email/components';
 
 interface OrganizerRejectedEmailProps {
   fullName: string;

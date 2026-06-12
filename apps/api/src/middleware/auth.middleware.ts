@@ -1,11 +1,10 @@
 import type { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken } from '../lib/jwt.js';
-import type { AccessTokenPayload } from '../lib/jwt.js';
-import { db } from '../db/index.js';
-import { organizerProfiles } from '../db/schema/index.js';
-import { eq } from 'drizzle-orm';
-import { UnauthorizedError, ForbiddenError } from './error.middleware.js';
-import type { UserRole } from '@eventhub/types';
+import { verifyAccessToken }                from '../lib/jwt.js';
+import type { AccessTokenPayload }       from '../lib/jwt.js';
+import { db }                         from '../db/index.js';
+import { organizerProfiles }       from '../db/schema/index.js';
+import { eq }                   from 'drizzle-orm';
+import type { UserRole }      from '@eventhub/types';
 
 // Extend Express Request with authenticated user context
 declare global {

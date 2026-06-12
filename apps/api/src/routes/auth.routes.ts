@@ -1,9 +1,14 @@
 import { Router } from 'express';
-import type { Request, Response, NextFunction } from 'express';
-import rateLimit from 'express-rate-limit';
-import { register, login, refresh, logout, logoutAll } from '../services/auth.service.js';
-import { authenticate } from '../middleware/auth.middleware.js';
-import { validateBody } from '../middleware/validate.middleware.js';
+import type { 
+  Request, 
+  Response, NextFunction } from 'express';
+import rateLimit           from 'express-rate-limit';
+import { 
+  register, 
+  login, 
+  refresh, logout, logoutAll } from '../services/auth.service.js';
+import { authenticate }   from '../middleware/auth.middleware.js';
+import { validate }     from '../middleware/validate.middleware.js';
 import { registerSchema, loginSchema } from '@eventhub/validators';
 
 const router: Router = Router();
@@ -86,7 +91,7 @@ function clearRefreshCookie(res: Response): void {
 router.post(
   '/register',
   registerLimiter,
-  validateBody(registerSchema),
+  validate(registerSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { user, tokens } = await register(req.body as {
@@ -117,7 +122,7 @@ router.post(
 router.post(
   '/login',
   loginLimiter,
-  validateBody(loginSchema),
+  validate(loginSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { user, tokens } = await login(req.body as {

@@ -11,11 +11,12 @@ import { getRedis, closeRedis } from './lib/redis.js';
 import { closeDb } from './db/index.js';
 import { requestIdMiddleware } from './middleware/requestId.middleware.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
-import { healthRouter } from './routes/health.routes';
-import { authRouter } from './routes/auth.routes';
-import { organizerRouter } from './routes/organizer.routes';
-import { adminRouter } from './routes/admin.routes';
-import { createEmailWorker } from './jobs/workers/email.worker';
+import { healthRouter } from './routes/health.routes.js';
+import { authRouter } from './routes/auth.routes.js';
+import { organizerRouter } from './routes/organizer.routes.js';
+import { adminRouter } from './routes/admin.routes.js';
+import { eventRouter } from './routes/event.routes.js';
+import { createEmailWorker } from './jobs/workers/email.worker.js';
 
 // PHASE 6: import { uploadRouter } from './routes/upload.routes.js';
 // PHASE 7: import { webhookRouter } from './routes/webhook.routes.js';
@@ -28,9 +29,7 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: isDev
-      ? ['http://localhost:3000']
-      : [config.FRONTEND_URL],
+    origin: isDev ? ['http://localhost:3000'] : [config.FRONTEND_URL],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
@@ -51,8 +50,7 @@ app.use(
         logger.http(message.trim());
       },
     },
-    skip: (req) =>
-      req.path === '/health' || req.path === '/health/ready',
+    skip: (req) => req.path === '/health' || req.path === '/health/ready',
   })
 );
 
@@ -70,6 +68,7 @@ app.use('/health', healthRouter);
 app.use('/auth', authRouter);
 app.use('/organizer', organizerRouter);
 app.use('/admin', adminRouter);
+app.use('/events', eventRouter);
 
 // PHASE 6: app.use('/upload', uploadRouter);
 
@@ -90,14 +89,12 @@ app.use(errorMiddleware);
 // ─── Startup ──────────────────────────────────────────────────────────────────
 
 async function start(): Promise<void> {
-  // Connect Redis
   try {
     await getRedis().connect();
   } catch {
     // Redis failure is non-fatal at startup
   }
 
-  // Start BullMQ workers
   createEmailWorker();
   logger.info('Background workers started');
 
@@ -114,12 +111,8 @@ async function start(): Promise<void> {
 
     server.close(async () => {
       logger.info('HTTP server closed');
-
-      // PHASE 7: await closeBullMQWorkers();
-
       await closeRedis();
       await closeDb();
-
       logger.info('Shutdown complete');
       process.exit(0);
     });

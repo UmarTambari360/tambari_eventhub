@@ -8,7 +8,7 @@ let isConnected = false;
 export function getRedis(): Redis {
   if (!redisClient) {
     redisClient = new Redis(config.REDIS_URL, {
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: null,
       enableReadyCheck: true,
       lazyConnect: true,
       // Reconnect strategy: back off up to 10s

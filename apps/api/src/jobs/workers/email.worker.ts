@@ -1,7 +1,7 @@
 import { Worker, type Job } from 'bullmq';
-import React from 'react';
-import { getRedis } from '../../lib/redis';
-import { logger } from '../../lib/logger';
+import React              from 'react';
+import { getRedis }     from '../../lib/redis';
+import { logger }     from '../../lib/logger';
 import { sendEmail } from '../../services/email.service';
 import { EMAIL_JOBS } from '../queues';
 import type {
@@ -10,7 +10,7 @@ import type {
   OrganizerApprovedPayload,
   OrganizerRejectedPayload,
   OrganizerSuspendedPayload,
-} from '../producers/email.producer.js';
+}                       from '../producers/email.producer.js';
 import { WelcomeEmail } from '../../emails/welcome';
 import { OrganizerApplicationReceivedEmail } from '../../emails/organizer-application-received';
 import { OrganizerApprovedEmail } from '../../emails/organizer-approved';
