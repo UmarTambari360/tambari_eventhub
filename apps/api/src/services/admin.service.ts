@@ -4,23 +4,21 @@ import {
   organizerApplications,
   organizerProfiles,
   users,
-} from '../db/schema/index.js';
+}                                     from '../db/schema/index.js';
 import { decrypt, maskAccountNumber } from '../utils/encryption.js';
-import {
-  createSubaccount,
-} from './paystack.service.js';
-import { getSettings } from './platform.service.js';
+import {  createSubaccount }          from './paystack.service.js';
+import { getSettings }                from './platform.service.js';
 import {
   enqueueOrganizerApprovedEmail,
   enqueueOrganizerRejectedEmail,
   enqueueOrganizerSuspendedEmail,
-} from '../jobs/producers/email.producer.js';
-import { logger } from '../lib/logger.js';
+}                               from '../jobs/producers/email.producer.js';
+import { logger }               from '../lib/logger.js';
 import {
   AppError,
   NotFoundError,
   ConflictError,
-} from '../middleware/error.middleware.js';
+}                               from '../middleware/error.middleware.js';
 
 /**
  * Approve an organizer application.
@@ -161,9 +159,8 @@ export async function approveApplication(
   });
 }
 
-/**
- * Reject an organizer application.
- */
+
+//Reject an organizer application.
 export async function rejectApplication(
   applicationId: string,
   reviewedBy: string,

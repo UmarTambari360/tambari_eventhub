@@ -1,18 +1,15 @@
 import { Router } from 'express';
 import type { Router as ExpressRouter } from 'express';
-import type { Request, Response } from 'express';
+import type { Request, Response }       from 'express';
 import { db } from '../db/index.js';
 import { sql } from 'drizzle-orm';
-import { isRedisConnected, getRedis } from '../lib/redis.js';
-import { logger } from '../lib/logger.js';
+import { isRedisConnected, getRedis }   from '../lib/redis.js';
+import { logger }                       from '../lib/logger.js';
 
 const router: ExpressRouter = Router();
 
-/**
- * GET /health
- * Liveness probe — is the process alive?
- * Always returns 200 as long as the process is running.
- */
+//GET /health
+//Always returns 200 as long as the process is running.
 router.get('/', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
@@ -20,11 +17,8 @@ router.get('/', (_req: Request, res: Response) => {
   });
 });
 
-/**
- * GET /health/ready
- * Readiness probe — are all dependencies reachable?
- * Returns 200 only when both Postgres and Redis are healthy.
- */
+//GET /health/ready
+//Returns 200 only when both Postgres and Redis are healthy.
 router.get('/ready', async (_req: Request, res: Response) => {
   let postgresOk = false;
   let redisOk = false;

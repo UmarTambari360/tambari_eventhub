@@ -2,17 +2,17 @@ import { Router } from 'express';
 import type { 
     Router as ExpressRouter, 
     Request, Response, NextFunction } from 'express';
-import multer from 'multer';
-import { authenticate } from '../middleware/auth.middleware.js';
+import multer                       from 'multer';
+import { authenticate }           from '../middleware/auth.middleware.js';
 import {
   uploadBuffer,
   deleteAsset,
-} from '../services/cloudinary.service.js';
-import { logger } from '../lib/logger.js';
+}                     from '../services/cloudinary.service.js';
+import { logger }   from '../lib/logger.js';
 
 const router: ExpressRouter = Router();
 
-// ─── Multer config ─────────────────────────────────────────────────────────────
+// ─── Multer config
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -29,7 +29,7 @@ const upload = multer({
   },
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers
 
 function handleMulterError(
   err: unknown,
@@ -64,12 +64,10 @@ function handleMulterError(
   next(err);
 }
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
+// ─── Routes
 
-/**
- * POST /upload/event-banner
- * Upload an event banner image. Returns { url, publicId }.
- */
+//POST /upload/event-banner
+//Upload an event banner image. Returns { url, publicId }.
 router.post(
   '/event-banner',
   authenticate,
@@ -107,10 +105,8 @@ router.post(
   }
 );
 
-/**
- * POST /upload/event-thumbnail
- * Upload an event thumbnail. Returns { url, publicId }.
- */
+//POST /upload/event-thumbnail
+//Upload an event thumbnail. Returns { url, publicId }.
 router.post(
   '/event-thumbnail',
   authenticate,
@@ -148,10 +144,8 @@ router.post(
   }
 );
 
-/**
- * POST /upload/avatar
- * Upload a user avatar. Returns { url, publicId }.
- */
+//POST /upload/avatar
+//Upload a user avatar. Returns { url, publicId }.
 router.post(
   '/avatar',
   authenticate,
@@ -188,11 +182,9 @@ router.post(
   }
 );
 
-/**
- * DELETE /upload/:publicId
- * Delete a Cloudinary asset by its public ID.
- * The publicId is base64-encoded in the URL to handle slashes safely.
- */
+//DELETE /upload/:publicId
+//Delete a Cloudinary asset by its public ID.
+//The publicId is base64-encoded in the URL to handle slashes safely.
 router.delete(
   '/:encodedPublicId',
   authenticate,

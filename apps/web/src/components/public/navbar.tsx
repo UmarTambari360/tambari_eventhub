@@ -116,7 +116,7 @@ export function Navbar() {
                   )}
                 >
                   <User className="h-3.5 w-3.5" />
-                  {auth.user.fullName.split(' ')[0]}
+                  {auth.user.fullName?.split(' ')[0] ?? auth.user.email?.split('@')[0] ?? 'Account'}
                 </Link>
                 <button
                   onClick={() => void handleLogout()}

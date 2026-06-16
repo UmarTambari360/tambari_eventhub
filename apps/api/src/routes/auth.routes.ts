@@ -16,13 +16,13 @@ const router: Router = Router();
 // ─── Rate limiters ────────────────────────────────────────────────────────────
 
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 10 * 60 * 1000, // 10 minutes
   max: 5,
   message: {
     success: false,
     error: {
       code: 'RATE_LIMITED',
-      message: 'Too many login attempts. Please try again in 15 minutes.',
+      message: 'Too many login attempts. Please try again in 10 minutes.',
     },
   },
   standardHeaders: true,
@@ -31,7 +31,7 @@ const loginLimiter = rateLimit({
 
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3,
+  max: 5,
   message: {
     success: false,
     error: {
@@ -57,7 +57,7 @@ const refreshLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// ─── Cookie helpers ───────────────────────────────────────────────────────────
+// ─── Cookie helpers
 
 const COOKIE_NAME = 'refresh_token';
 const COOKIE_OPTIONS = {
@@ -83,11 +83,9 @@ function clearRefreshCookie(res: Response): void {
   });
 }
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
+// ─── Routes
 
-/**
- * POST /auth/register
- */
+//POST /auth/register
 router.post(
   '/register',
   registerLimiter,
@@ -116,9 +114,7 @@ router.post(
   }
 );
 
-/**
- * POST /auth/login
- */
+//POST /auth/login
 router.post(
   '/login',
   loginLimiter,
@@ -145,10 +141,8 @@ router.post(
   }
 );
 
-/**
- * POST /auth/refresh
- * Reads refresh token from httpOnly cookie, returns new access token.
- */
+//POST /auth/refresh
+//Reads refresh token from httpOnly cookie, returns new access token.
 router.post(
   '/refresh',
   refreshLimiter,
@@ -181,10 +175,8 @@ router.post(
   }
 );
 
-/**
- * POST /auth/logout
- * Requires valid access token. Blacklists it + revokes refresh token.
- */
+//POST /auth/logout
+//Requires valid access token. Blacklists it + revokes refresh token.
 router.post(
   '/logout',
   authenticate,
@@ -208,10 +200,8 @@ router.post(
   }
 );
 
-/**
- * POST /auth/logout-all
- * Revokes all refresh token families for the user.
- */
+//POST /auth/logout-all
+//Revokes all refresh token families for the user.
 router.post(
   '/logout-all',
   authenticate,

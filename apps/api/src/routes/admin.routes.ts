@@ -1,34 +1,34 @@
-import { Router } from 'express';
-import type { Router as ExpressRouter, Request, Response } from 'express';
+import { Router }     from 'express';
+import type { 
+  Router as ExpressRouter, 
+  Request, Response } from 'express';
 import {
   authenticate,
   requireRole,
-} from '../middleware/auth.middleware.js';
-import { validate } from '../middleware/validate.middleware.js';
+}                     from '../middleware/auth.middleware.js';
+import { validate }   from '../middleware/validate.middleware.js';
 import {
   approveApplication,
   rejectApplication,
   suspendUser,
   unsuspendUser,
-} from '../services/admin.service.js';
+}                     from '../services/admin.service.js';
 import {
   listApplicationsForAdmin,
   getApplicationByIdForAdmin,
-} from '../services/organizer.service.js';
+}                     from '../services/organizer.service.js';
 import { rejectApplicationSchema, suspendUserSchema } from '@eventhub/validators';
-import type { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import type { AuthenticatedRequest }                from '../middleware/auth.middleware.js';
 
 const router: ExpressRouter = Router();
 
 // All admin routes require authentication + admin role
 router.use(authenticate, requireRole('admin'));
 
-// ─── Organizer Applications ──────────────────────────────────────────────────
+// ─── Organizer Applications
 
-/**
- * GET /admin/applications
- * List all organizer applications, filterable by status.
- */
+//GET /admin/applications
+//List all organizer applications, filterable by status.
 router.get('/applications', async (req: Request, res: Response) => {
   const status = req.query['status'] as 'pending' | 'approved' | 'rejected' | undefined;
   const page = parseInt(String(req.query['page'] ?? '1'), 10);
@@ -48,10 +48,8 @@ router.get('/applications', async (req: Request, res: Response) => {
   });
 });
 
-/**
- * GET /admin/applications/:id
- * Get a single application by ID.
- */
+//GET /admin/applications/:id
+//Get a single application by ID.
 router.get('/applications/:id', async (req: Request, res: Response) => {
   const { id } = req.params as { id: string };
   const application = await getApplicationByIdForAdmin(id);
@@ -67,10 +65,8 @@ router.get('/applications/:id', async (req: Request, res: Response) => {
   res.json({ success: true, data: application });
 });
 
-/**
- * POST /admin/applications/:id/approve
- * Approve an organizer application.
- */
+//POST /admin/applications/:id/approve
+//Approve an organizer application.
 router.post('/applications/:id/approve', async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   const { id } = req.params as { id: string };
@@ -84,10 +80,8 @@ router.post('/applications/:id/approve', async (req: Request, res: Response) => 
   });
 });
 
-/**
- * POST /admin/applications/:id/reject
- * Reject an organizer application with a reason.
- */
+//POST /admin/applications/:id/reject
+//Reject an organizer application with a reason.
 router.post(
   '/applications/:id/reject',
   validate(rejectApplicationSchema),
@@ -106,12 +100,10 @@ router.post(
   }
 );
 
-// ─── User Management ─────────────────────────────────────────────────────────
+// ─── User Management
 
-/**
- * POST /admin/users/:id/suspend
- * Suspend a user account.
- */
+//POST /admin/users/:id/suspend
+//Suspend a user account.
 router.post(
   '/users/:id/suspend',
   validate(suspendUserSchema),
@@ -142,10 +134,8 @@ router.post(
   }
 );
 
-/**
- * POST /admin/users/:id/unsuspend
- * Unsuspend a user account.
- */
+//POST /admin/users/:id/unsuspend
+//Unsuspend a user account.
 router.post('/users/:id/unsuspend', async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   const { id } = req.params as { id: string };

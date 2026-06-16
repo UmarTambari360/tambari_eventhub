@@ -1,26 +1,30 @@
 import { Router } from 'express';
-import type { Router as ExpressRouter, Request, Response } from 'express';
+import type { 
+  Router as ExpressRouter, 
+  Request, Response } from 'express';
 import {
   authenticate,
   requireNotSuspended,
-} from '../middleware/auth.middleware.js';
+}                   from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
 import {
   submitApplication,
   getApplicationStatus,
   getOrganizerProfile,
-} from '../services/organizer.service.js';
-import { getPaystackBanks, verifyBankAccount } from '../services/paystack.service.js';
-import { submitApplicationSchema, verifyBankAccountSchema } from '@eventhub/validators';
+}                   from '../services/organizer.service.js';
+import { 
+  getPaystackBanks, 
+  verifyBankAccount } from '../services/paystack.service.js';
+import { 
+  submitApplicationSchema, 
+  verifyBankAccountSchema }          from '@eventhub/validators';
 import type { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 
 const router: ExpressRouter = Router();
 
-/**
- * GET /organizer/banks
- * Public — returns the list of Nigerian banks from Paystack.
- * Used during the organizer application form.
- */
+//GET /organizer/banks
+//Public — returns the list of Nigerian banks from Paystack.
+//Used during the organizer application form.
 router.get('/banks', async (_req: Request, res: Response) => {
   const banks = await getPaystackBanks();
   res.json({
@@ -29,10 +33,8 @@ router.get('/banks', async (_req: Request, res: Response) => {
   });
 });
 
-/**
- * POST /organizer/verify-bank
- * Authenticated — verify a bank account number before application submission.
- */
+//POST /organizer/verify-bank
+//Authenticated — verify a bank account number before application submission.
 router.post(
   '/verify-bank',
   authenticate,
@@ -55,10 +57,8 @@ router.post(
   }
 );
 
-/**
- * POST /organizer/apply
- * Authenticated, not suspended — submit an organizer application.
- */
+//POST /organizer/apply
+//Authenticated, not suspended — submit an organizer application.
 router.post(
   '/apply',
   authenticate,
@@ -95,10 +95,8 @@ router.post(
   }
 );
 
-/**
- * GET /organizer/application-status
- * Authenticated — get the current user's application status.
- */
+//GET /organizer/application-status
+//Authenticated — get the current user's application status.
 router.get(
   '/application-status',
   authenticate,
@@ -113,10 +111,8 @@ router.get(
   }
 );
 
-/**
- * GET /organizer/profile
- * Authenticated organizer — get their organizer profile.
- */
+//GET /organizer/profile
+//Authenticated organizer — get their organizer profile.
 router.get(
   '/profile',
   authenticate,

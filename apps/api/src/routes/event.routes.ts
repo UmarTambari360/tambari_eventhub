@@ -6,7 +6,7 @@ import {
   authenticate,
   requireRole,
   requireOrganizerApproved,
-} from '../middleware/auth.middleware.js';
+}                   from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
 import {
   createEventSchema,
@@ -36,12 +36,10 @@ import type { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 
 const router: ExpressRouter = Router();
 
-// ─── Public routes ────────────────────────────────────────────────────────────
+// ─── Public routes
 
-/**
- * GET /events/featured
- * Returns featured events — cached.
- */
+//GET /events/featured
+//Returns featured events — cached.
 router.get('/featured', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const events = await getFeaturedEvents();
@@ -51,10 +49,8 @@ router.get('/featured', async (_req: Request, res: Response, next: NextFunction)
   }
 });
 
-/**
- * GET /events
- * Public paginated event listing with filters.
- */
+//GET /events
+//Public paginated event listing with filters.
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = eventFilterSchema.safeParse(req.query);
@@ -72,10 +68,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-/**
- * GET /events/:slug
- * Public event detail by slug.
- */
+//GET /events/:slug
+//Public event detail by slug.
 router.get('/:slug', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { slug } = req.params as { slug: string };
@@ -95,7 +89,7 @@ router.get('/:slug', async (req: Request, res: Response, next: NextFunction) => 
   }
 });
 
-// ─── Organizer routes — require approved organizer ────────────────────────────
+// ─── Organizer routes — require approved organizer
 
 const organizerMiddleware = [
   authenticate,
@@ -103,10 +97,8 @@ const organizerMiddleware = [
   requireOrganizerApproved,
 ];
 
-/**
- * GET /events/organizer/list
- * Organizer's own events (including unpublished).
- */
+//GET /events/organizer/list
+//Organizer's own events (including unpublished).
 router.get(
   '/organizer/list',
   ...organizerMiddleware,
@@ -123,10 +115,8 @@ router.get(
   }
 );
 
-/**
- * GET /events/organizer/:id
- * Single event detail for organizer (includes unpublished + ticket types).
- */
+//GET /events/organizer/:id
+//Single event detail for organizer (includes unpublished + ticket types).
 router.get(
   '/organizer/:id',
   ...organizerMiddleware,
@@ -142,10 +132,8 @@ router.get(
   }
 );
 
-/**
- * POST /events
- * Create a new event with initial ticket types.
- */
+//POST /events
+//Create a new event with initial ticket types.
 router.post(
   '/',
   ...organizerMiddleware,
@@ -153,7 +141,9 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const authReq = req as AuthenticatedRequest;
-      const result = await createEvent(authReq.user.userId, req.body as Parameters<typeof createEvent>[1]);
+      const result = await createEvent(
+        authReq.user.userId, 
+        req.body as Parameters<typeof createEvent>[1]);
       res.status(201).json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -161,10 +151,8 @@ router.post(
   }
 );
 
-/**
- * PATCH /events/:id
- * Update event details (not ticket types).
- */
+//PATCH /events/:id
+//Update event details (not ticket types).
 router.patch(
   '/:id',
   ...organizerMiddleware,
@@ -173,7 +161,9 @@ router.patch(
     try {
       const authReq = req as AuthenticatedRequest;
       const { id } = req.params as { id: string };
-      await updateEvent(id, authReq.user.userId, req.body as Parameters<typeof updateEvent>[2]);
+      await updateEvent(
+        id, authReq.user.userId, 
+        req.body as Parameters<typeof updateEvent>[2]);
       res.json({ success: true, data: null });
     } catch (err) {
       next(err);
@@ -181,10 +171,8 @@ router.patch(
   }
 );
 
-/**
- * POST /events/:id/publish
- * Publish or unpublish an event.
- */
+//POST /events/:id/publish
+//Publish or unpublish an event.
 router.post(
   '/:id/publish',
   ...organizerMiddleware,
@@ -206,10 +194,8 @@ router.post(
   }
 );
 
-/**
- * POST /events/:id/cancel
- * Cancel an event.
- */
+//POST /events/:id/cancel
+//Cancel an event.
 router.post(
   '/:id/cancel',
   ...organizerMiddleware,
@@ -225,12 +211,10 @@ router.post(
   }
 );
 
-// ─── Ticket type routes ───────────────────────────────────────────────────────
+// ─── Ticket type routes
 
-/**
- * POST /events/:id/ticket-types
- * Add a ticket type to an event.
- */
+//POST /events/:id/ticket-types
+//Add a ticket type to an event.
 router.post(
   '/:id/ticket-types',
   ...organizerMiddleware,
@@ -239,7 +223,9 @@ router.post(
     try {
       const authReq = req as AuthenticatedRequest;
       const { id } = req.params as { id: string };
-      const ticketTypeId = await addTicketType(id, authReq.user.userId, req.body as Parameters<typeof addTicketType>[2]);
+      const ticketTypeId = await addTicketType(
+        id, authReq.user.userId, 
+        req.body as Parameters<typeof addTicketType>[2]);
       res.status(201).json({ success: true, data: { id: ticketTypeId } });
     } catch (err) {
       next(err);
@@ -247,10 +233,8 @@ router.post(
   }
 );
 
-/**
- * PATCH /events/ticket-types/:ticketTypeId
- * Update a ticket type.
- */
+//PATCH /events/ticket-types/:ticketTypeId
+//Update a ticket type.
 router.patch(
   '/ticket-types/:ticketTypeId',
   ...organizerMiddleware,
@@ -267,10 +251,8 @@ router.patch(
   }
 );
 
-/**
- * DELETE /events/ticket-types/:ticketTypeId
- * Delete a ticket type (only if 0 tickets sold).
- */
+//DELETE /events/ticket-types/:ticketTypeId
+//Delete a ticket type (only if 0 tickets sold).
 router.delete(
   '/ticket-types/:ticketTypeId',
   ...organizerMiddleware,
