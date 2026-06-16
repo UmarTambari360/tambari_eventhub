@@ -98,7 +98,7 @@ export interface TicketTypeDTO {
   minPurchase: number;
   maxPurchase: number;
   isActive: boolean;
-  isSaleOpen: boolean; // derived: within date range (if set) and isActive
+  isSaleOpen: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -152,18 +152,121 @@ export interface EventListItemDTO {
   isCancelled: boolean;
   category: EventCategory | null;
   tags: string[];
-  lowestPrice: number | null; // kobo — null if free
+  lowestPrice: number | null;
   totalCapacity: number | null;
   totalSold: number;
 }
 
-// Organizer-facing — includes unpublished events
 export interface OrganizerEventDTO extends EventListItemDTO {
   isPublished: boolean;
   ticketTypes: TicketTypeDTO[];
-  totalRevenue: number; // kobo
+  totalRevenue: number;
   createdAt: string;
   updatedAt: string;
+}
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+export type OrderStatus =
+  | 'pending'
+  | 'processing'
+  | 'paid'
+  | 'failed'
+  | 'cancelled'
+  | 'refunded';
+
+export interface OrderItemDTO {
+  id: string;
+  ticketTypeId: string;
+  ticketTypeName: string;
+  pricePerTicket: number; // kobo
+  quantity: number;
+  subtotal: number; // kobo
+}
+
+export interface AttendeeDTO {
+  id: string;
+  ticketCode: string;
+  ticketTypeName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string | null;
+  isCheckedIn: boolean;
+  checkedInAt: string | null;
+  isRevoked: boolean;
+  revokedAt: string | null;
+  revokedReason: string | null;
+  qrCodeUrl: string | null;
+  eventId: string;
+  orderId: string;
+}
+
+export interface OrderDTO {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  isFreeOrder: boolean;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string | null;
+  subtotal: number; // kobo
+  serviceFee: number; // kobo
+  totalAmount: number; // kobo
+  notes: string | null;
+  expiresAt: string | null;
+  paidAt: string | null;
+  cancelledAt: string | null;
+  refundedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  event: {
+    id: string;
+    title: string;
+    slug: string;
+    venue: string;
+    location: string;
+    eventDate: string;
+    bannerImageUrl: string | null;
+    thumbnailUrl: string | null;
+    organizer: { id: string; fullName: string; businessName: string | null };
+  };
+  items: OrderItemDTO[];
+  attendees: AttendeeDTO[];
+}
+
+export interface OrderListItemDTO {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  isFreeOrder: boolean;
+  totalAmount: number;
+  createdAt: string;
+  paidAt: string | null;
+  event: {
+    id: string;
+    title: string;
+    slug: string;
+    eventDate: string;
+    thumbnailUrl: string | null;
+  };
+  itemCount: number;
+}
+
+// ─── Checkout ────────────────────────────────────────────────────────────────
+
+export interface CreateOrderResponse {
+  orderId: string;
+  orderNumber: string;
+  isFreeOrder: boolean;
+  totalAmount: number;
+  expiresAt: string | null;
+}
+
+export interface InitializePaymentResponse {
+  authorizationUrl: string;
+  reference: string;
+  accessCode: string;
 }
 
 // ─── Platform ─────────────────────────────────────────────────────────────────
@@ -212,5 +315,3 @@ export interface PaginatedResponse<T> {
   hasNextPage: boolean;
   hasPrevPage: boolean;
 }
-
-// PHASE 7: Order, OrderItem, Attendee, Transaction types

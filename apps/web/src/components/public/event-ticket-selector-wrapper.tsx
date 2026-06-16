@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { TicketSelector } from './ticket-selector';
+import { createOrderAction } from '@/actions/order.actions';
 import type { EventDTO } from '@eventhub/types';
+import { toast } from 'sonner';
 
 interface Props {
   event: EventDTO;
@@ -12,25 +15,50 @@ interface Props {
 export function EventTicketSelectorWrapper({ event }: Props) {
   const router = useRouter();
   const auth = useAuth();
+  const [loading, setLoading] = useState(false);
 
-  function handleProceed(selections: Array<{ ticketTypeId: string; quantity: number }>) {
+  async function handleProceed(selections: Array<{ ticketTypeId: string; quantity: number }>) {
     if (!auth?.user) {
       const next = `/events/${event.slug}`;
       router.push(`/sign-in?next=${encodeURIComponent(next)}`);
       return;
     }
 
-    // PHASE 7: createOrder Server Action → redirect to /checkout/[orderId]
-    // For now, encode selections in query params as a placeholder
-    const params = new URLSearchParams();
-    params.set('eventId', event.id);
-    selections.forEach((s) => {
-      params.append('t', `${s.ticketTypeId}:${s.quantity}`);
-    });
+    if (!auth.accessToken) return;
 
-    // This route is built in Phase 7
-    router.push(`/checkout/new?${params.toString()}`);
+    setLoading(true);
+
+    const result = await createOrderAction(
+      {
+        eventId: event.id,
+        items: selections,
+      },
+      auth.accessToken
+    );
+
+    setLoading(false);
+
+    if (!result.success || !result.data) {
+      toast.error(result.error ?? 'Failed to create order. Please try again.');
+      return;
+    }
+
+    const { orderId, orderNumber, isFreeOrder } = result.data;
+
+    if (isFreeOrder) {
+      // Free orders are immediately completed — go straight to confirmation
+      router.push(`/orders/${orderNumber}`);
+    } else {
+      // Paid orders go to checkout for attendee details + Paystack redirect
+      router.push(`/checkout/${orderId}`);
+    }
   }
 
-  return <TicketSelector ticketTypes={event.ticketTypes} onProceed={handleProceed} />;
+  return (
+    <TicketSelector
+      ticketTypes={event.ticketTypes}
+      onProceed={(selections) => void handleProceed(selections)}
+      isLoading={loading}
+    />
+  );
 }

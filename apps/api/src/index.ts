@@ -17,9 +17,11 @@ import { organizerRouter } from './routes/organizer.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { eventRouter } from './routes/event.routes.js';
 import { uploadRouter } from './routes/upload.routes.js';
+import { webhookRouter } from './routes/webhook.routes.js';
+import { orderRouter } from './routes/order.routes.js';
 import { createEmailWorker } from './jobs/workers/email.worker.js';
-
-// PHASE 7: import { webhookRouter } from './routes/webhook.routes.js';
+import { createWebhookWorker } from './jobs/workers/webhook.worker.js';
+import { createCleanupWorker } from './jobs/workers/cleanup.worker.js';
 
 const app: express.Application = express();
 
@@ -54,9 +56,17 @@ app.use(
   })
 );
 
-// ─── Body Parsers ─────────────────────────────────────────────────────────────
+// ─── Webhook route — MUST be before express.json() ───────────────────────────
+// Paystack webhooks require the raw body for HMAC-SHA512 signature validation.
+// express.raw() captures the raw Buffer; express.json() would parse it away.
 
-// PHASE 7: app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRouter);
+app.use(
+  '/webhooks',
+  express.raw({ type: 'application/json' }),
+  webhookRouter
+);
+
+// ─── Body Parsers ─────────────────────────────────────────────────────────────
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
@@ -70,6 +80,7 @@ app.use('/organizer', organizerRouter);
 app.use('/admin', adminRouter);
 app.use('/events', eventRouter);
 app.use('/upload', uploadRouter);
+app.use('/orders', orderRouter);
 
 // 404 handler
 app.use((_req, res) => {
@@ -94,7 +105,11 @@ async function start(): Promise<void> {
     // Redis failure is non-fatal at startup
   }
 
+  // Start background workers
   createEmailWorker();
+  createWebhookWorker();
+  createCleanupWorker();
+  // PHASE 8: createQrCodeWorker();
   logger.info('Background workers started');
 
   const server = app.listen(config.PORT, () => {
