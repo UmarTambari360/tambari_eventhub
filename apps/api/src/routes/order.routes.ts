@@ -24,6 +24,7 @@ import {
   processRefund,
 } from '../services/payment.service.js';
 import { checkInAttendee } from '../services/attendee.service.js';
+import { revokeTicket } from '../services/attendee.service.js'
 import { enqueueOrderExpiry } from '../jobs/producers/cleanup.producer.js';
 import { enqueueQrCodeGeneration } from '../jobs/producers/qrcode.producer.js';
 import { createFreeOrderAttendees } from '../services/attendee.service.js';
@@ -310,6 +311,30 @@ router.post(
       );
 
       res.json({ success: result.success, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /orders/attendees/:attendeeId/revoke
+// Revoke a specific ticket. Organizer/admin only.
+router.post(
+  '/attendees/:attendeeId/revoke',
+  requireRole('organizer', 'admin'),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const { attendeeId } = req.params as { attendeeId: string };
+      const { reason } = req.body as { reason?: string };
+
+      await revokeTicket(
+        attendeeId,
+        reason ?? 'Revoked by organizer',
+        authReq.user.userId
+      );
+
+      res.json({ success: true, data: null, message: 'Ticket revoked.' });
     } catch (err) {
       next(err);
     }

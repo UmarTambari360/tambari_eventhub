@@ -4,11 +4,10 @@ import { eq } from 'drizzle-orm';
 import { getRedis } from '../../lib/redis.js';
 import { logger } from '../../lib/logger.js';
 import { db } from '../../db/index.js';
-import { attendees, orders, events, orderItems, ticketTypes } from '../../db/schema/index.js';
+import { attendees, orders, events, ticketTypes } from '../../db/schema/index.js';
 import { uploadQrCode } from '../../services/cloudinary.service.js';
 import { updateAttendeeQrCode } from '../../services/attendee.service.js';
 import { enqueueTicketDeliveryEmail } from '../producers/email.producer.js';
-import { QRCODE_JOBS } from '../queues.js';
 import type { GenerateQrCodesPayload } from '../producers/qrcode.producer.js';
 
 /**

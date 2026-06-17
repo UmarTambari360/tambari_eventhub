@@ -2,86 +2,118 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CalendarDays, Plus } from 'lucide-react';
+import { CalendarDays, Ticket, ShoppingBag, TrendingUp, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { getOrganizerEventsAction } from '@/actions/event.actions';
+import { getDashboardStatsAction, getMonthlyRevenueAction } from '@/actions/analytics.actions';
+import { StatsCard } from '@/components/organizer/stats-card';
+import { RevenueChart } from '@/components/organizer/revenue-chart';
+import { formatNaira } from '@/lib/utils';
+import type { DashboardStats, MonthlyRevenueStat } from '@/actions/analytics.actions';
 
 export default function DashboardPage() {
   const auth = useAuth();
-  const [eventCount, setEventCount] = useState<number | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [revenue, setRevenue] = useState<MonthlyRevenueStat[]>([]);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingRevenue, setLoadingRevenue] = useState(true);
 
   useEffect(() => {
     if (!auth?.accessToken) return;
+
     void (async () => {
-      const result = await getOrganizerEventsAction(auth.accessToken!);
-      if (result.success && result.data) {
-        setEventCount(result.data.total);
+      const [statsResult, revenueResult] = await Promise.all([
+        getDashboardStatsAction(auth.accessToken!),
+        getMonthlyRevenueAction(auth.accessToken!, 12),
+      ]);
+
+      if (statsResult.success && statsResult.data) {
+        setStats(statsResult.data);
       }
+      setLoadingStats(false);
+
+      if (revenueResult.success && revenueResult.data) {
+        setRevenue(revenueResult.data);
+      }
+      setLoadingRevenue(false);
     })();
   }, [auth?.accessToken]);
 
+  const firstName = auth?.user?.fullName?.split(' ')[0] ?? 'Organizer';
+
   return (
-    <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">
-        Welcome back, {auth?.user?.fullName?.split(' ')[0] ?? 'Organizer'}
-      </h1>
-      <p className="text-gray-500 text-sm mb-8">
-        Manage your events, track ticket sales, and monitor revenue.
-      </p>
+    <div className="max-w-5xl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-(--text-primary)">Welcome back, {firstName}</h1>
+        <p className="body-sm text-(--text-muted) mt-0.5">
+          Here's what's happening across your events.
+        </p>
+      </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-8">
-        <Link
-          href="/dashboard/events"
-          className="rounded-xl border border-violet-100 bg-violet-50 p-6 hover:bg-violet-100 transition-colors"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <CalendarDays className="h-5 w-5 text-violet-600" />
-            <span className="text-2xl font-bold text-violet-700">{eventCount ?? '—'}</span>
-          </div>
-          <div className="text-sm font-medium text-violet-800">My Events</div>
-          <div className="text-xs text-violet-500 mt-0.5">Manage events →</div>
-        </Link>
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <StatsCard
+          label="Total Revenue"
+          value={stats ? formatNaira(stats.totalRevenue) : '—'}
+          subValue={`${stats?.paidOrders ?? 0} paid orders`}
+          icon={<TrendingUp className="h-4 w-4" />}
+          loading={loadingStats}
+        />
+        <StatsCard
+          label="Tickets Sold"
+          value={stats?.totalTicketsSold ?? '—'}
+          subValue="across all events"
+          icon={<Ticket className="h-4 w-4" />}
+          loading={loadingStats}
+        />
+        <StatsCard
+          label="Published Events"
+          value={`${stats?.publishedEvents ?? '—'} / ${stats?.totalEvents ?? '—'}`}
+          subValue="total events"
+          icon={<CalendarDays className="h-4 w-4" />}
+          loading={loadingStats}
+        />
+        <StatsCard
+          label="Total Orders"
+          value={stats?.totalOrders ?? '—'}
+          subValue={`${stats?.paidOrders ?? 0} confirmed`}
+          icon={<ShoppingBag className="h-4 w-4" />}
+          loading={loadingStats}
+        />
+      </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6">
-          <div className="text-2xl font-bold text-gray-300 mb-1">—</div>
-          <div className="text-sm font-medium text-gray-500">Total Tickets Sold</div>
-          <div className="text-xs text-gray-400 mt-0.5">Phase 9</div>
+      {/* Revenue chart */}
+      <div className="card p-5 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="heading-sm text-(--text-primary)">Revenue — Last 12 Months</h2>
+          <Link href="/dashboard/orders" className="body-sm text-(--primary) hover:underline">
+            View all orders →
+          </Link>
         </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-6">
-          <div className="text-2xl font-bold text-gray-300 mb-1">—</div>
-          <div className="text-sm font-medium text-gray-500">Revenue This Month</div>
-          <div className="text-xs text-gray-400 mt-0.5">Phase 9</div>
-        </div>
+        {loadingRevenue ? (
+          <div className="skeleton h-60 rounded-xl" />
+        ) : (
+          <RevenueChart data={revenue} />
+        )}
       </div>
 
       {/* Quick actions */}
-      <div className="mb-6">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-          Quick Actions
-        </h2>
+      <div>
+        <h2 className="caption text-(--text-muted) uppercase tracking-wide mb-3">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
           <Link
             href="/dashboard/events/create"
-            className="flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-700 transition-colors"
+            className="flex items-center gap-2 btn btn-primary btn-md"
           >
             <Plus className="h-4 w-4" />
-            Create New Event
+            Create Event
           </Link>
-          <Link
-            href="/dashboard/events"
-            className="flex items-center gap-2 rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            View All Events
+          <Link href="/dashboard/events" className="btn btn-ghost btn-md">
+            My Events
+          </Link>
+          <Link href="/dashboard/orders" className="btn btn-ghost btn-md">
+            Orders
           </Link>
         </div>
-      </div>
-
-      {/* Revenue chart placeholder */}
-      <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-12 text-center">
-        <p className="text-gray-400 text-sm">
-          Revenue analytics and order management build in Phase 9.
-        </p>
       </div>
     </div>
   );

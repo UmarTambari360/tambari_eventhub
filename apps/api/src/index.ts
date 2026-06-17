@@ -19,6 +19,7 @@ import { eventRouter } from './routes/event.routes.js';
 import { uploadRouter } from './routes/upload.routes.js';
 import { webhookRouter } from './routes/webhook.routes.js';
 import { orderRouter } from './routes/order.routes.js';
+import { analyticsRouter } from './routes/analytics.routes.js';
 import { createEmailWorker } from './jobs/workers/email.worker.js';
 import { createWebhookWorker } from './jobs/workers/webhook.worker.js';
 import { createCleanupWorker } from './jobs/workers/cleanup.worker.js';
@@ -83,6 +84,7 @@ app.use('/admin', adminRouter);
 app.use('/events', eventRouter);
 app.use('/upload', uploadRouter);
 app.use('/orders', orderRouter);
+app.use('/analytics', analyticsRouter);
 
 // 404 handler
 app.use((_req, res) => {
