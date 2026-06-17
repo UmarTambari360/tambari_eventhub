@@ -28,11 +28,12 @@ import { enqueueOrderExpiry } from '../jobs/producers/cleanup.producer.js';
 import { enqueueQrCodeGeneration } from '../jobs/producers/qrcode.producer.js';
 import { createFreeOrderAttendees } from '../services/attendee.service.js';
 import { db } from '../db/index.js';
-import { orders, ticketTypes } from '../db/schema/index.js';
+import { events, orders, ticketTypes } from '../db/schema/index.js';
 import { eq, sql } from 'drizzle-orm';
 import type { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/auth.middleware.js';
 import { logger } from '../lib/logger.js';
+import { enqueueOrderConfirmationEmail } from '@/jobs/producers/email.producer.js';
 
 const router: ExpressRouter = Router();
 
@@ -114,11 +115,40 @@ router.post(
             })
             .where(eq(ticketTypes.id, item.ticketTypeId));
         }
+        // Load event for email
+        const [event] = await db
+          .select({ title: events.title, eventDate: events.eventDate, venue: events.venue, location: events.location })
+          .from(events)
+          .where(eq(events.id, result.eventId ?? input.eventId))
+          .limit(1);
 
         // Enqueue QR code generation
         await enqueueQrCodeGeneration({
           orderId: result.orderId,
           orderNumber: result.orderNumber,
+        });
+        // Enqueue order confirmation email for free orders
+        await enqueueOrderConfirmationEmail({
+          to: email,
+          customerName: user.fullName,
+          orderNumber: result.orderNumber,
+          eventTitle: event.title,
+          eventDate: new Intl.DateTimeFormat('en-NG', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Africa/Lagos',
+          }).format(event.eventDate),
+          eventVenue: event.venue,
+          eventLocation: event.location,
+          items: items.map((i) => ({
+            ticketTypeName: i.ticketTypeName,
+            quantity: i.quantity,
+            pricePerTicket: i.pricePerTicket,
+            subtotal: i.subtotal,
+          })),
+          subtotalKobo: 0,
+          serviceFeeKobo: 0,
+          totalAmountKobo: 0,
+          isFreeOrder: true,
         });
 
         logger.info('Free order completed immediately', {

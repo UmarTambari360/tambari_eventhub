@@ -22,6 +22,8 @@ import { orderRouter } from './routes/order.routes.js';
 import { createEmailWorker } from './jobs/workers/email.worker.js';
 import { createWebhookWorker } from './jobs/workers/webhook.worker.js';
 import { createCleanupWorker } from './jobs/workers/cleanup.worker.js';
+import { createQrCodeWorker } from './jobs/workers/qrcode.worker.js';
+import { createExportWorker } from './jobs/workers/export.worker.js';
 
 const app: express.Application = express();
 
@@ -109,7 +111,8 @@ async function start(): Promise<void> {
   createEmailWorker();
   createWebhookWorker();
   createCleanupWorker();
-  // PHASE 8: createQrCodeWorker();
+  createQrCodeWorker();
+  createExportWorker();
   logger.info('Background workers started');
 
   const server = app.listen(config.PORT, () => {

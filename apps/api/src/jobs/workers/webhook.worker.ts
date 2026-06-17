@@ -1,16 +1,15 @@
 import { Worker, type Job } from 'bullmq';
 import { db } from '../../db/index.js';
-import { webhookLogs } from '../../db/schema/index.js';
+import { events, orderItems, orders, webhookLogs } from '../../db/schema/index.js';
 import { eq } from 'drizzle-orm';
 import { getRedis } from '../../lib/redis.js';
 import { logger } from '../../lib/logger.js';
 import { processWebhookPaymentSuccess } from '../../services/payment.service.js';
 import { enqueueQrCodeGeneration } from '../producers/qrcode.producer.js';
 import { cancelOrderExpiry } from '../producers/cleanup.producer.js';
-import { enqueueOrganizerApplicationReceivedEmail } from '../producers/email.producer.js';
-import { WEBHOOK_JOBS } from '../queues.js';
 import type { WebhookProcessingPayload } from '../producers/webhook.producer.js';
 import { queryTransactionByReference } from '../../db/queries/orders.queries.js';
+import { enqueueOrderConfirmationEmail } from '../producers/email.producer.js';
 
 async function processWebhookJob(job: Job): Promise<void> {
   const { event, payload, reference, webhookLogId } =
@@ -49,6 +48,63 @@ async function processWebhookJob(job: Job): Promise<void> {
             orderNumber: reference, // Will be resolved in worker
           });
         }
+         // Enqueue order confirmation email
+      if (txn) {
+        const orderDetails = await db
+          .select({
+            customerEmail: orders.customerEmail,
+            customerName: orders.customerName,
+            orderNumber: orders.orderNumber,
+            subtotal: orders.subtotal,
+            serviceFee: orders.serviceFee,
+            totalAmount: orders.totalAmount,
+            isFreeOrder: orders.isFreeOrder,
+            eventId: orders.eventId,
+          })
+          .from(orders)
+          .where(eq(orders.id, txn.orderId))
+          .limit(1)
+          .then((r) => r[0]);
+
+        if (orderDetails) {
+          const eventInfo = await db
+            .select({ title: events.title, eventDate: events.eventDate, venue: events.venue, location: events.location })
+            .from(events)
+            .where(eq(events.id, orderDetails.eventId))
+            .limit(1)
+            .then((r) => r[0]);
+
+          const orderItemRows = await db
+            .select()
+            .from(orderItems)
+            .where(eq(orderItems.orderId, txn.orderId));
+
+          if (eventInfo) {
+            await enqueueOrderConfirmationEmail({
+              to: orderDetails.customerEmail,
+              customerName: orderDetails.customerName,
+              orderNumber: orderDetails.orderNumber,
+              eventTitle: eventInfo.title,
+              eventDate: new Intl.DateTimeFormat('en-NG', {
+                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Africa/Lagos',
+              }).format(eventInfo.eventDate),
+              eventVenue: eventInfo.venue,
+              eventLocation: eventInfo.location,
+              items: orderItemRows.map((i) => ({
+                ticketTypeName: i.ticketTypeName,
+                quantity: i.quantity,
+                pricePerTicket: i.pricePerTicket,
+                subtotal: i.subtotal,
+              })),
+              subtotalKobo: orderDetails.subtotal,
+              serviceFeeKobo: orderDetails.serviceFee,
+              totalAmountKobo: orderDetails.totalAmount,
+              isFreeOrder: orderDetails.isFreeOrder,
+            });
+          }
+        }
+      }
 
         break;
       }
