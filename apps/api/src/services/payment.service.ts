@@ -10,7 +10,6 @@ import {
   platformLedger,
   events,
 } from '../db/schema/index.js';
-
 import {
   queryOrderById,
   queryOrderItems,
@@ -33,20 +32,15 @@ import {
   ForbiddenError,
   ConflictError,
 } from '../middleware/error.middleware.js';
-
 import type { AttendeeDetailInput } from '@eventhub/validators';
 import type { InitializePaymentResponse } from '@eventhub/types';
 
 const FRONTEND_URL = process.env['FRONTEND_URL'] ?? 'http://localhost:3000';
 
-// ─── Initialize Payment ─────────────────────────────────────────────────────
+// INTERNAL HELPERS 
 
-export async function initializePayment(
-  orderId: string,
-  userId: string,
-  attendeeDetails: AttendeeDetailInput[],
-  customCallbackUrl?: string
-): Promise<InitializePaymentResponse> {
+//Validates an order before payment initialization.
+async function validateOrderForPayment(orderId: string, userId: string) {
   const order = await queryOrderById(orderId);
   if (!order) throw new NotFoundError('Order not found.');
   if (order.userId !== userId) throw new ForbiddenError('Access denied.');
@@ -59,19 +53,27 @@ export async function initializePayment(
   if (order.expiresAt && order.expiresAt < new Date()) {
     throw new ConflictError('This order has expired. Please create a new order.');
   }
+  return order;
+}
 
-  // Validate attendee count
+//Validates attendee details match order quantity.
+async function validateAttendeeCount(
+  orderId: string, attendeeDetails: AttendeeDetailInput[]) {
   const items = await queryOrderItems(orderId);
   const expectedCount = items.reduce((sum, i) => sum + i.quantity, 0);
+
   if (attendeeDetails.length !== expectedCount) {
     throw new AppError(
       422,
       `Expected ${expectedCount} attendee detail(s), received ${attendeeDetails.length}.`
     );
   }
+  return items;
+}
 
-  // Resolve organizer subaccount (critical for split payments)
-  const organizerInfo = await db
+//Resolves organizer subaccount for split payment.
+async function getOrganizerSubaccount(orderId: string) {
+  const [info] = await db
     .select({
       organizerId: events.organizerId,
       subaccountCode: organizerProfiles.paystackSubaccountCode,
@@ -82,25 +84,41 @@ export async function initializePayment(
     .where(eq(orders.id, orderId))
     .limit(1);
 
-  if (!organizerInfo[0]?.subaccountCode) {
+  if (!info?.subaccountCode) {
     throw new AppError(
       500,
       'Organizer payment account not configured. Please contact support.'
     );
   }
 
-  const { subaccountCode } = organizerInfo[0];
+  return info.subaccountCode;
+}
 
+// PUBLIC SERVICE FUNCTIONS 
+
+// Initialize Payment 
+
+export async function initializePayment(
+  orderId: string,
+  userId: string,
+  attendeeDetails: AttendeeDetailInput[],
+  customCallbackUrl?: string
+): Promise<InitializePaymentResponse> {
+  const order = await validateOrderForPayment(orderId, userId);
+  await validateAttendeeCount(orderId, attendeeDetails);
+
+  const subaccountCode = await getOrganizerSubaccount(orderId);
   const settings = await getSettings();
+
   const platformFeeKobo = calculatePlatformFee(order.subtotal, settings.service_fee_percent);
   const organizerAmountKobo = calculateOrganizerNet(order.subtotal, settings.service_fee_percent);
-
   const reference = generateTransactionReference();
+
   const callbackUrl =
     customCallbackUrl ?? `${FRONTEND_URL}/orders/${order.orderNumber}?ref=${reference}`;
 
-  // Create attendees early (they exist even if payment fails)
-  await createAttendees(orderId, items, attendeeDetails);
+  // Create attendees early (they exist even if payment ultimately fails)
+  await createAttendees(orderId, await queryOrderItems(orderId), attendeeDetails);
 
   // Create transaction record
   await db.insert(transactions).values({
@@ -121,6 +139,7 @@ export async function initializePayment(
     .set({ status: 'processing', updatedAt: new Date() })
     .where(eq(orders.id, orderId));
 
+  // Call Paystack
   const paystackResult = await initializeTransaction({
     email: order.customerEmail,
     amount: order.totalAmount,
@@ -131,7 +150,7 @@ export async function initializePayment(
     metadata: { orderId, orderNumber: order.orderNumber, userId },
   });
 
-  // Store Paystack details
+  // Store Paystack response
   await db
     .update(transactions)
     .set({
@@ -151,7 +170,7 @@ export async function initializePayment(
   };
 }
 
-// ─── Webhook / Success Handler (Source of Truth) ────────────────────────────
+// Webhook / Success Handler (Source of Truth) 
 
 export async function processWebhookPaymentSuccess(
   reference: string,
@@ -195,7 +214,7 @@ export async function processWebhookPaymentSuccess(
   const paidAt = new Date(verified.paid_at);
   const settings = await getSettings();
 
-  // Resolve event + organizer (clean join)
+  // Resolve event + organizer
   const [orderWithEvent] = await db
     .select({
       eventId: orders.eventId,
@@ -275,7 +294,7 @@ export async function processWebhookPaymentSuccess(
   });
 }
 
-// ─── Manual Verification Fallback ───────────────────────────────────────────
+// Manual Verification Fallback 
 
 export async function manualVerifyPayment(
   orderNumber: string,
@@ -289,7 +308,6 @@ export async function manualVerifyPayment(
 
   if (!order) throw new NotFoundError('Order not found.');
   if (order.userId !== userId) throw new ForbiddenError('Access denied.');
-
   if (order.status === 'paid') {
     return { status: 'paid', message: 'Payment already confirmed.' };
   }
@@ -316,7 +334,7 @@ export async function manualVerifyPayment(
   }
 }
 
-// ─── Refund ─────────────────────────────────────────────────────────────────
+// Refund 
 
 export async function processRefund(
   orderId: string,
@@ -336,7 +354,6 @@ export async function processRefund(
   if (!txn) throw new AppError(500, 'No transaction found for this order.');
 
   const refundResult = await refundTransaction(txn.paystackReference ?? txn.reference);
-
   const items = await queryOrderItems(orderId);
 
   await db.transaction(async (tx) => {
