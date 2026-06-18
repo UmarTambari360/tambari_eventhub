@@ -1,36 +1,58 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { ticketTypes, events }                      from '../db/schema/index.js';
+import { ticketTypes, events } from '../db/schema/index.js';
 import { queryEventById, queryTicketTypesForEvent } from '../db/queries/events.queries.js';
 import { cacheDel } from '../lib/redis.js';
-import { logger }   from '../lib/logger.js';
+import { logger } from '../lib/logger.js';
 import {
   AppError,
   NotFoundError,
   ForbiddenError,
   ConflictError,
-}                           from '../middleware/error.middleware.js';
-import type { 
-    CreateTicketTypeInput, 
-    UpdateTicketTypeInput } from '@eventhub/validators';
+} from '../middleware/error.middleware.js';
+import type {
+  CreateTicketTypeInput,
+  UpdateTicketTypeInput,
+} from '@eventhub/validators';
 
+// INTERNAL HELPERS 
+
+//Verifies the organizer owns the event and it is not cancelled.
+async function ensureOrganizerCanManageEvent(
+  eventId: string,
+  organizerId: string
+): Promise<void> {
+  const event = await queryEventById(eventId);
+  if (!event) throw new NotFoundError('Event not found.');
+  if (event.organizerId !== organizerId) throw new ForbiddenError('Access denied.');
+  if (event.isCancelled) throw new ConflictError('Cannot modify ticket types on a cancelled event.');
+}
+
+//Recomputes and updates the event's `isFree` flag based on active ticket types.
 async function recomputeEventIsFree(eventId: string): Promise<void> {
   const types = await queryTicketTypesForEvent(eventId);
   const activeTypes = types.filter((t) => t.isActive);
   const isFree = activeTypes.length > 0 && activeTypes.every((t) => t.price === 0);
 
-  await db.update(events).set({ isFree, updatedAt: new Date() }).where(eq(events.id, eventId));
+  await db
+    .update(events)
+    .set({ isFree, updatedAt: new Date() })
+    .where(eq(events.id, eventId));
 }
+
+//Invalidates the public event cache after ticket type changes.
+async function invalidateEventCache(slug: string): Promise<void> {
+  await cacheDel(`event:${slug}`);
+}
+
+// PUBLIC SERVICE FUNCTIONS 
 
 export async function addTicketType(
   eventId: string,
   organizerId: string,
   input: CreateTicketTypeInput
 ): Promise<string> {
-  const event = await queryEventById(eventId);
-  if (!event) throw new NotFoundError('Event not found.');
-  if (event.organizerId !== organizerId) throw new ForbiddenError('Access denied.');
-  if (event.isCancelled) throw new ConflictError('Cannot add ticket types to a cancelled event.');
+  await ensureOrganizerCanManageEvent(eventId, organizerId);
 
   const existing = await queryTicketTypesForEvent(eventId);
   if (existing.length >= 10) {
@@ -57,9 +79,7 @@ export async function addTicketType(
   if (!tt) throw new AppError(500, 'Failed to create ticket type.');
 
   await recomputeEventIsFree(eventId);
-
-  // Invalidate event cache
-  await cacheDel(`event:${event.slug}`);
+  await invalidateEventCache((await queryEventById(eventId))!.slug); // safe after validation
 
   logger.info('Ticket type added', { ticketTypeId: tt.id, eventId });
 
@@ -79,12 +99,9 @@ export async function updateTicketType(
 
   if (!tt) throw new NotFoundError('Ticket type not found.');
 
-  const event = await queryEventById(tt.eventId);
-  if (!event) throw new NotFoundError('Associated event not found.');
-  if (event.organizerId !== organizerId) throw new ForbiddenError('Access denied.');
-  if (event.isCancelled) throw new ConflictError('Cannot update ticket types of a cancelled event.');
+  await ensureOrganizerCanManageEvent(tt.eventId, organizerId);
 
-  // Business rule: cannot reduce quantity below what's already sold
+  // Business rule: cannot reduce quantity below already sold
   if (input.quantity !== undefined && input.quantity < tt.quantitySold) {
     throw new AppError(
       422,
@@ -93,6 +110,7 @@ export async function updateTicketType(
   }
 
   const updateData: Partial<typeof ticketTypes.$inferInsert> = { updatedAt: new Date() };
+
   if (input.name !== undefined) updateData.name = input.name;
   if (input.description !== undefined) updateData.description = input.description || null;
   if (input.price !== undefined) updateData.price = input.price;
@@ -108,7 +126,7 @@ export async function updateTicketType(
   await db.update(ticketTypes).set(updateData).where(eq(ticketTypes.id, ticketTypeId));
 
   await recomputeEventIsFree(tt.eventId);
-  await cacheDel(`event:${event.slug}`);
+  await invalidateEventCache((await queryEventById(tt.eventId))!.slug);
 
   logger.info('Ticket type updated', { ticketTypeId, eventId: tt.eventId });
 }
@@ -125,11 +143,9 @@ export async function deleteTicketType(
 
   if (!tt) throw new NotFoundError('Ticket type not found.');
 
-  const event = await queryEventById(tt.eventId);
-  if (!event) throw new NotFoundError('Associated event not found.');
-  if (event.organizerId !== organizerId) throw new ForbiddenError('Access denied.');
+  await ensureOrganizerCanManageEvent(tt.eventId, organizerId);
 
-  // Business rule: cannot delete if any tickets sold
+  // Business rule: cannot delete if tickets have been sold
   if (tt.quantitySold > 0) {
     throw new ConflictError(
       `Cannot delete this ticket type — ${tt.quantitySold} ticket(s) already sold. Deactivate it instead.`
@@ -139,14 +155,12 @@ export async function deleteTicketType(
   await db.delete(ticketTypes).where(eq(ticketTypes.id, ticketTypeId));
 
   await recomputeEventIsFree(tt.eventId);
-  await cacheDel(`event:${event.slug}`);
+  await invalidateEventCache((await queryEventById(tt.eventId))!.slug);
 
   logger.info('Ticket type deleted', { ticketTypeId, eventId: tt.eventId });
 }
 
 export async function getTicketTypesForEvent(eventId: string, organizerId: string) {
-  const event = await queryEventById(eventId);
-  if (!event) throw new NotFoundError('Event not found.');
-  if (event.organizerId !== organizerId) throw new ForbiddenError('Access denied.');
+  await ensureOrganizerCanManageEvent(eventId, organizerId);
   return queryTicketTypesForEvent(eventId);
 }
