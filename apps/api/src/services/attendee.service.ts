@@ -1,9 +1,7 @@
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
   attendees,
-  orderItems,
-  events,
   orders,
 } from '../db/schema/index.js';
 import {
@@ -14,7 +12,6 @@ import { generateTicketCode } from '../utils/code-generator.js';
 import { logger } from '../lib/logger.js';
 import {
   NotFoundError,
-  ForbiddenError,
   ConflictError,
 } from '../middleware/error.middleware.js';
 import type { AttendeeDetailInput } from '@eventhub/validators';

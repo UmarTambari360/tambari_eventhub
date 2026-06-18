@@ -14,7 +14,6 @@ interface EventCardProps {
 
 export function EventCard({ event }: EventCardProps) {
   const formattedDate = formatDate(event.eventDate, {
-    weekday: 'short',
     day: 'numeric',
     month: 'short',
     year: 'numeric',

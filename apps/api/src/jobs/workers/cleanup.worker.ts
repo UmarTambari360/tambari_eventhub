@@ -36,7 +36,7 @@ async function processCleanupJob(job: Job): Promise<void> {
         .from(events)
         .where(eq(events.organizerId, organizerId));
 
-      const toUnpublish = publishedEvents.filter((e) => true); // isPublished check
+      const toUnpublish = publishedEvents.filter((_e) => true); // isPublished check
 
       // Unpublish all
       if (toUnpublish.length > 0) {

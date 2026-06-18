@@ -36,7 +36,6 @@ import {
 } from '../db/queries/admin.queries.js';
 import { updateSetting } from '../services/platform.service.js';
 import { getSettings } from '../services/platform.service.js';
-import { publishEvent, cancelEvent } from '../services/event.service.js';
 import { refundOrder } from '../services/order.service.js';
 import {
   rejectApplicationSchema,
@@ -203,7 +202,11 @@ router.get('/users', async (req: Request, res: Response, next: NextFunction) => 
         ? false
         : undefined;
 
-    const { rows, total } = await queryAllUsers(page, limit, { role, isSuspended, search });
+    const { rows, total } = await queryAllUsers(page, limit, {
+      ...(role !== undefined && { role }),
+      ...(isSuspended !== undefined && { isSuspended }),
+      ...(search !== undefined && { search }),
+    });
 
     res.json({
       success: true,
@@ -377,7 +380,10 @@ router.get('/orders', async (req: Request, res: Response, next: NextFunction) =>
     const status = req.query['status'] as string | undefined;
     const search = req.query['search'] as string | undefined;
 
-    const { rows, total } = await queryAllOrders(page, limit, { status, search });
+    const { rows, total } = await queryAllOrders(page, limit, {
+      ...(status && { status }),
+      ...(search && { search }),
+    });
 
     res.json({
       success: true,
@@ -412,7 +418,7 @@ router.post('/orders/:id/refund', async (req: Request, res: Response, next: Next
   try {
     const authReq = req as AuthenticatedRequest;
     const { id } = req.params as { id: string };
-    const { reason } = req.body as { reason: string };
+    // const { reason } = req.body as { reason: string };
 
     await refundOrder(id, authReq.user.userId);
 

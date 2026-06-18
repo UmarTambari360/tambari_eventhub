@@ -169,7 +169,7 @@ export async function login(input: LoginInput): Promise<{
 }
 
 export async function refresh(incomingRefreshToken: string): Promise<{
-  user: { id: string; email: string; role: string };
+  user: { id: string; email: string; fullName: string; role: string };
   tokens: AuthTokenPair;
 }> {
   // 1. Verify JWT signature + expiry
@@ -212,7 +212,6 @@ export async function refresh(incomingRefreshToken: string): Promise<{
       family: payload.family,
     });
 
-    // Revoke all tokens in this family
     if (familyTokens.length > 0) {
       await db
         .update(refreshTokens)
@@ -237,11 +236,12 @@ export async function refresh(incomingRefreshToken: string): Promise<{
     .set({ isRevoked: true })
     .where(eq(refreshTokens.id, matchedToken.id));
 
-  // 6. Load user
+  // 6. Load user — include fullName so the client's AuthUser shape stays complete
   const [user] = await db
     .select({
       id: users.id,
       email: users.email,
+      fullName: users.fullName,
       role: users.role,
       isSuspended: users.isSuspended,
     })
@@ -268,9 +268,11 @@ export async function refresh(incomingRefreshToken: string): Promise<{
 
   logger.info('Token refreshed', { userId: user.id });
 
-  return { user: { id: user.id, email: user.email, role: user.role }, tokens };
+  return {
+    user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role },
+    tokens,
+  };
 }
-
 export async function logout(
   accessToken: string,
   refreshToken: string | undefined

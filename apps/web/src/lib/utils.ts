@@ -9,12 +9,15 @@ export function formatDate(
   date: string | Date,
   options?: Intl.DateTimeFormatOptions
 ): string {
-  return new Intl.DateTimeFormat('en-NG', {
-    dateStyle: 'medium',
-    ...options,
-  }).format(typeof date === 'string' ? new Date(date) : date);
-}
+  // If custom options are passed, use them exclusively to avoid conflicts with 'dateStyle'
+  const defaultOptions: Intl.DateTimeFormatOptions = options 
+    ? options 
+    : { dateStyle: 'medium' };
 
+  return new Intl.DateTimeFormat('en-NG', defaultOptions).format(
+    typeof date === 'string' ? new Date(date) : date
+  );
+}
 export function formatNaira(kobo: number): string {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',

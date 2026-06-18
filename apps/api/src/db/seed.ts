@@ -10,7 +10,7 @@
  * - Platform settings rows
  */
 import 'dotenv/config';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { db, pool } from './index.js';
 import {
   users,

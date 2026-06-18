@@ -5,6 +5,7 @@ import type {
   Response,
   NextFunction,
 } from 'express';
+
 import { authenticate } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
 import {
@@ -13,28 +14,37 @@ import {
   checkInSchema,
   refundOrderSchema,
 } from '@eventhub/validators';
+
 import {
   createOrder,
   getOrderByNumber,
   getUserOrders,
 } from '../services/order.service.js';
+
 import {
   initializePayment,
   manualVerifyPayment,
   processRefund,
 } from '../services/payment.service.js';
-import { checkInAttendee } from '../services/attendee.service.js';
-import { revokeTicket } from '../services/attendee.service.js'
+
+import {
+  checkInAttendee,
+  revokeTicket,
+  createFreeOrderAttendees,
+} from '../services/attendee.service.js';
+
 import { enqueueOrderExpiry } from '../jobs/producers/cleanup.producer.js';
 import { enqueueQrCodeGeneration } from '../jobs/producers/qrcode.producer.js';
-import { createFreeOrderAttendees } from '../services/attendee.service.js';
+import { enqueueOrderConfirmationEmail } from '../jobs/producers/email.producer.js';
+
 import { db } from '../db/index.js';
-import { events, orders, ticketTypes } from '../db/schema/index.js';
+import { events, orders, ticketTypes, orderItems } from '../db/schema/index.js';
 import { eq, sql } from 'drizzle-orm';
+
 import type { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/auth.middleware.js';
 import { logger } from '../lib/logger.js';
-import { enqueueOrderConfirmationEmail } from '@/jobs/producers/email.producer.js';
+import { parsePaginationParams } from '../lib/pagination.js';
 
 const router: ExpressRouter = Router();
 
@@ -101,7 +111,6 @@ router.post(
           .where(eq(orders.id, result.orderId));
 
         // Update quantitySold for each ticket type
-        const { orderItems } = await import('../db/schema/index.js');
         const items = await db
           .select()
           .from(orderItems)
@@ -116,11 +125,17 @@ router.post(
             })
             .where(eq(ticketTypes.id, item.ticketTypeId));
         }
+
         // Load event for email
         const [event] = await db
-          .select({ title: events.title, eventDate: events.eventDate, venue: events.venue, location: events.location })
+          .select({
+            title: events.title,
+            eventDate: events.eventDate,
+            venue: events.venue,
+            location: events.location,
+          })
           .from(events)
-          .where(eq(events.id, result.eventId ?? input.eventId))
+          .where(eq(events.id, result.eventId))
           .limit(1);
 
         // Enqueue QR code generation
@@ -128,18 +143,27 @@ router.post(
           orderId: result.orderId,
           orderNumber: result.orderNumber,
         });
+
         // Enqueue order confirmation email for free orders
         await enqueueOrderConfirmationEmail({
           to: email,
           customerName: user.fullName,
           orderNumber: result.orderNumber,
-          eventTitle: event.title,
-          eventDate: new Intl.DateTimeFormat('en-NG', {
-            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Africa/Lagos',
-          }).format(event.eventDate),
-          eventVenue: event.venue,
-          eventLocation: event.location,
+          eventTitle: event?.title || 'Event',
+          eventDate: event?.eventDate
+            ? new Intl.DateTimeFormat('en-NG', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Africa/Lagos',
+              }).format(event.eventDate)
+            : 'TBD',
+          eventVenue: event?.venue || '',
+          eventLocation: event?.location || '',
           items: items.map((i) => ({
             ticketTypeName: i.ticketTypeName,
             quantity: i.quantity,
@@ -188,11 +212,7 @@ router.post(
     try {
       const authReq = req as AuthenticatedRequest;
       const { orderId } = req.params as { orderId: string };
-      const body = req.body as Parameters<typeof initializePayment>[2] extends never
-        ? never
-        : { orderId: string; attendees: Parameters<typeof initializePayment>[2]; callbackUrl?: string };
-
-      const { attendees: attendeeDetails, callbackUrl } = req.body as {
+      const { attendees, callbackUrl } = req.body as {
         attendees: Parameters<typeof initializePayment>[2];
         callbackUrl?: string;
       };
@@ -200,7 +220,7 @@ router.post(
       const result = await initializePayment(
         orderId,
         authReq.user.userId,
-        attendeeDetails,
+        attendees,
         callbackUrl
       );
 
@@ -267,8 +287,10 @@ router.get(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const authReq = req as AuthenticatedRequest;
-      const page = parseInt(String(req.query['page'] ?? '1'), 10);
-      const limit = Math.min(parseInt(String(req.query['limit'] ?? '20'), 10), 50);
+      const { page, limit } = parsePaginationParams({
+        page: Number(req.query.page),
+        limit: Number(req.query.limit),
+      });
 
       const result = await getUserOrders(authReq.user.userId, page, limit);
 
@@ -294,7 +316,7 @@ router.post(
     try {
       const authReq = req as AuthenticatedRequest;
       const { ticketCode } = req.body as { ticketCode: string };
-      const eventId = req.query['eventId'] as string;
+      const eventId = req.query.eventId as string | undefined;
 
       if (!eventId) {
         res.status(422).json({
@@ -317,8 +339,12 @@ router.post(
   }
 );
 
-// POST /orders/attendees/:attendeeId/revoke
-// Revoke a specific ticket. Organizer/admin only.
+// ─── Revoke ticket ────────────────────────────────────────────────────────────
+
+/**
+ * POST /orders/attendees/:attendeeId/revoke
+ * Revoke a specific ticket. Organizer/admin only.
+ */
 router.post(
   '/attendees/:attendeeId/revoke',
   requireRole('organizer', 'admin'),

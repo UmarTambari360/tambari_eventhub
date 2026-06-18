@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, XCircle, QrCode, Loader2, Search } from 'lucide-react';
+import { CheckCircle, XCircle, QrCode, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { checkInAttendeeAction, revokeTicketAction } from '@/actions/analytics.actions';
 import type { EventAttendee } from '@/actions/analytics.actions';

@@ -51,7 +51,6 @@ export function OrderConfirmationEmail({
   eventVenue,
   eventLocation,
   items,
-  subtotalKobo,
   serviceFeeKobo,
   totalAmountKobo,
   isFreeOrder,
