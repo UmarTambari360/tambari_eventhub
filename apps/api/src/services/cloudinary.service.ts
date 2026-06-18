@@ -25,7 +25,7 @@ export interface UploadResult {
   bytes: number;
 }
 
-// ─── Transform presets ────────────────────────────────────────────────────────
+// Transform presets 
 
 const TRANSFORMS: Record<
   UploadFolder,
@@ -67,12 +67,10 @@ const TRANSFORMS: Record<
   },
 };
 
-// ─── Upload ───────────────────────────────────────────────────────────────────
+// ─── Upload 
 
-/**
- * Upload a file buffer to Cloudinary.
- * Returns the secure URL, public_id, and file metadata.
- */
+//Upload a file buffer to Cloudinary.
+//Returns the secure URL, public_id, and file metadata.
 export async function uploadBuffer(
   buffer: Buffer,
   folder: UploadFolder,
@@ -112,10 +110,8 @@ export async function uploadBuffer(
   });
 }
 
-/**
- * Upload a raw QR code PNG buffer.
- * Used by the qrcode worker — no transformation applied.
- */
+//Upload a raw QR code PNG buffer.
+//Used by the qrcode worker — no transformation applied.
 export async function uploadQrCode(
   buffer: Buffer,
   ticketCode: string
@@ -149,12 +145,10 @@ export async function uploadQrCode(
   });
 }
 
-// ─── Delete ───────────────────────────────────────────────────────────────────
+// Delete 
 
-/**
- * Delete an asset from Cloudinary by its public_id.
- * Non-fatal — logs warning on failure but does not throw.
- */
+//Delete an asset from Cloudinary by its public_id.
+//Non-fatal — logs warning on failure but does not throw.
 export async function deleteAsset(publicId: string): Promise<void> {
   try {
     const result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
@@ -174,9 +168,7 @@ export async function deleteAsset(publicId: string): Promise<void> {
   }
 }
 
-/**
- * Delete multiple assets in a batch.
- */
+//Delete multiple assets in a batch.
 export async function deleteAssets(publicIds: string[]): Promise<void> {
   if (publicIds.length === 0) return;
   await Promise.allSettled(publicIds.map((id) => deleteAsset(id)));

@@ -1,6 +1,5 @@
 import { Resend } from 'resend';
 import { logger } from '../lib/logger';
-// React is needed for JSX type — imported nominally
 import type React from 'react';
 
 
@@ -25,11 +24,8 @@ export interface SendEmailOptions {
   react: React.ReactElement;
 }
 
-
-/**
- * Send a transactional email via Resend.
- * Throws on failure — callers (job workers) handle retries.
- */
+//Send a transactional email via Resend.
+//Throws on failure — callers (job workers) handle retries.
 export async function sendEmail(options: SendEmailOptions): Promise<void> {
   const { to, subject, react } = options;
 

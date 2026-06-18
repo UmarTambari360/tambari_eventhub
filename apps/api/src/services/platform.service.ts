@@ -15,10 +15,8 @@ export interface PlatformSettingsMap {
   support_email: string;
 }
 
-/**
- * Load all platform settings as a typed map.
- * Redis → DB fallback. Cached for 1 hour.
- */
+//Load all platform settings as a typed map.
+//Redis → DB fallback. Cached for 1 hour.
 export async function getSettings(): Promise<PlatformSettingsMap> {
   const cached = await cacheGet(SETTINGS_CACHE_KEY);
   if (cached) {
@@ -45,17 +43,13 @@ export async function getSettings(): Promise<PlatformSettingsMap> {
   return settings;
 }
 
-/**
- * Get a single setting by key.
- */
+//Get a single setting by key.
 export async function getSetting(key: keyof PlatformSettingsMap): Promise<PlatformSettingsMap[typeof key]> {
   const settings = await getSettings();
   return settings[key];
 }
 
-/**
- * Update a platform setting and invalidate the cache.
- */
+//Update a platform setting and invalidate the cache.
 export async function updateSetting(
   key: string,
   value: string,
@@ -71,9 +65,7 @@ export async function updateSetting(
   logger.info('Platform setting updated', { key, updatedBy });
 }
 
-/**
- * Invalidate the settings cache. Called after any setting update.
- */
+// Invalidate the settings cache. Called after any setting update.
 export async function invalidateSettingsCache(): Promise<void> {
   await cacheDel(SETTINGS_CACHE_KEY);
 }
