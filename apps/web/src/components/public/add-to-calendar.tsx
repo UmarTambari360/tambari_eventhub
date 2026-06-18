@@ -33,7 +33,7 @@ export function AddToCalendar({
     location,
     startDate,
     endDate: endDate ?? null,
-    url: url ?? null,
+    url: url ?? '',
   };
 
   useEffect(() => {

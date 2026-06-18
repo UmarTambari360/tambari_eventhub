@@ -4,40 +4,24 @@ import {
   organizerApplications,
   organizerProfiles,
   users,
-}                                     from '../db/schema/index.js';
+} from '../db/schema/index.js';
 import { decrypt, maskAccountNumber } from '../utils/encryption.js';
-import {  createSubaccount }          from './paystack.service.js';
-import { getSettings }                from './platform.service.js';
+import { createSubaccount }   from './paystack.service.js';
+import { getSettings }  from './platform.service.js';
 import {
   enqueueOrganizerApprovedEmail,
   enqueueOrganizerRejectedEmail,
   enqueueOrganizerSuspendedEmail,
-}                               from '../jobs/producers/email.producer.js';
-import { logger }               from '../lib/logger.js';
+} from '../jobs/producers/email.producer.js';
+import { logger } from '../lib/logger.js';
 import {
   AppError,
   NotFoundError,
   ConflictError,
-}                               from '../middleware/error.middleware.js';
+} from '../middleware/error.middleware.js';
 
-/**
- * Approve an organizer application.
- * Steps:
- *   1. Fetch the application and decrypt the bank account number.
- *   2. Create a Paystack subaccount for the organizer.
- *   3. Create the organizer_profiles row.
- *   4. Update application status → approved.
- *   5. Update user role → organizer.
- *   6. Enqueue approval email.
- *
- * This runs in a DB transaction where possible, but Paystack API call
- * is external — if subaccount creation fails the DB stays unchanged.
- */
-export async function approveApplication(
-  applicationId: string,
-  reviewedBy: string
-): Promise<void> {
-  // Fetch application
+// Fetches an organizer application with basic validation.
+async function getPendingApplication(applicationId: string) {
   const application = await db
     .select()
     .from(organizerApplications)
@@ -51,15 +35,19 @@ export async function approveApplication(
 
   if (application.status !== 'pending') {
     throw new ConflictError(
-      `Application is already ${application.status} and cannot be approved.`
+      `Application is already ${application.status} and cannot be processed.`
     );
   }
 
-  // Fetch the applicant
+  return application;
+}
+
+// Fetches applicant user details (email + fullName).
+async function getApplicant(userId: string) {
   const applicant = await db
     .select({ email: users.email, fullName: users.fullName })
     .from(users)
-    .where(eq(users.id, application.userId))
+    .where(eq(users.id, userId))
     .limit(1)
     .then((rows) => rows[0]);
 
@@ -67,33 +55,44 @@ export async function approveApplication(
     throw new NotFoundError('Applicant user not found');
   }
 
-  // Decrypt bank account number for Paystack subaccount creation
-  let decryptedAccountNumber: string;
+  return applicant;
+}
+
+// Decrypts bank account number safely.
+async function decryptBankAccount(encrypted: string): Promise<string> {
   try {
-    decryptedAccountNumber = decrypt(application.bankAccountNumber);
+    return decrypt(encrypted);
   } catch {
     throw new AppError(
       500,
       'Failed to decrypt bank account details. Please contact support.'
     );
   }
+}
 
-  // Get current service fee percent from platform settings
-  const settings = await getSettings();
-  const organizerPercent = 100 - settings.service_fee_percent;
-
-  // Create Paystack subaccount
-  let subaccountData: { subaccount_code: string; id: number };
+// Creates Paystack subaccount and returns required data.
+async function createOrganizerSubaccount(
+  application: any,
+  organizerPercent: number
+): Promise<{ subaccount_code: string; id: number }> {
+  let decryptedAccountNumber: string;
   try {
-    subaccountData = await createSubaccount(
+    decryptedAccountNumber = await decryptBankAccount(application.bankAccountNumber);
+  } catch (err) {
+    logger.error('Bank decryption failed during subaccount creation', { applicationId: application.id });
+    throw err; // rethrow the AppError from decrypt helper
+  }
+
+  try {
+    return await createSubaccount(
       application.businessName,
       application.bankCode,
       decryptedAccountNumber,
       organizerPercent
     );
   } catch (err) {
-    logger.error('Failed to create Paystack subaccount during approval', {
-      applicationId,
+    logger.error('Failed to create Paystack subaccount', {
+      applicationId: application.id,
       error: err instanceof Error ? err.message : String(err),
     });
     throw new AppError(
@@ -101,10 +100,18 @@ export async function approveApplication(
       'Failed to create Paystack subaccount. Please try again or contact support.'
     );
   }
+}
 
-  // All external calls succeeded — update DB atomically
+// Atomically updates DB after successful external calls (approval flow).
+async function executeApprovalTransaction(
+  applicationId: string,
+  userId: string,
+  reviewedBy: string,
+  subaccountData: { subaccount_code: string; id: number },
+  application: any
+): Promise<void> {
   await db.transaction(async (tx) => {
-    // Update application status
+    // Update application
     await tx
       .update(organizerApplications)
       .set({
@@ -115,17 +122,17 @@ export async function approveApplication(
       })
       .where(eq(organizerApplications.id, applicationId));
 
-    // Update user role to organizer
+    // Promote user role
     await tx
       .update(users)
       .set({ role: 'organizer', updatedAt: new Date() })
-      .where(eq(users.id, application.userId));
+      .where(eq(users.id, userId));
 
     // Create organizer profile
     await tx
       .insert(organizerProfiles)
       .values({
-        userId: application.userId,
+        userId,
         businessName: application.businessName,
         businessDescription: application.businessDescription ?? undefined,
         websiteUrl: application.websiteUrl ?? undefined,
@@ -133,7 +140,7 @@ export async function approveApplication(
         paystackSubaccountCode: subaccountData.subaccount_code,
         paystackSubaccountId: String(subaccountData.id),
         bankName: application.bankName,
-        bankAccountNumber: maskAccountNumber(decryptedAccountNumber),
+        bankAccountNumber: maskAccountNumber(decrypt(application.bankAccountNumber)), // safe since we decrypted earlier
         bankAccountName: application.bankAccountName,
         status: 'approved',
         totalEventsCreated: 0,
@@ -141,8 +148,38 @@ export async function approveApplication(
         totalRevenue: 0,
       });
   });
+}
 
-  // Enqueue approval email
+// PUBLIC SERVICE FUNCTIONS 
+
+/**
+ * Approve an organizer application.
+ * Steps: validate → external calls → atomic DB update → email.
+ */
+export async function approveApplication(
+  applicationId: string,
+  reviewedBy: string
+): Promise<void> {
+  const application = await getPendingApplication(applicationId);
+  const applicant = await getApplicant(application.userId);
+
+  // Platform fee settings
+  const settings = await getSettings();
+  const organizerPercent = 100 - settings.service_fee_percent;
+
+  // External Paystack call (non-transactional)
+  const subaccountData = await createOrganizerSubaccount(application, organizerPercent);
+
+  // Atomic DB changes
+  await executeApprovalTransaction(
+    applicationId,
+    application.userId,
+    reviewedBy,
+    subaccountData,
+    application
+  );
+
+  // Side effect: email
   await enqueueOrganizerApprovedEmail({
     userId: application.userId,
     email: applicant.email,
@@ -159,36 +196,13 @@ export async function approveApplication(
   });
 }
 
-
-//Reject an organizer application.
 export async function rejectApplication(
   applicationId: string,
   reviewedBy: string,
   rejectionReason: string
 ): Promise<void> {
-  const application = await db
-    .select()
-    .from(organizerApplications)
-    .where(eq(organizerApplications.id, applicationId))
-    .limit(1)
-    .then((rows) => rows[0]);
-
-  if (!application) {
-    throw new NotFoundError('Application not found');
-  }
-
-  if (application.status !== 'pending') {
-    throw new ConflictError(
-      `Application is already ${application.status} and cannot be rejected.`
-    );
-  }
-
-  const applicant = await db
-    .select({ email: users.email, fullName: users.fullName })
-    .from(users)
-    .where(eq(users.id, application.userId))
-    .limit(1)
-    .then((rows) => rows[0]);
+  const application = await getPendingApplication(applicationId);
+  const applicant = await getApplicant(application.userId);
 
   await db
     .update(organizerApplications)
@@ -201,15 +215,13 @@ export async function rejectApplication(
     })
     .where(eq(organizerApplications.id, applicationId));
 
-  if (applicant) {
-    await enqueueOrganizerRejectedEmail({
-      userId: application.userId,
-      email: applicant.email,
-      fullName: applicant.fullName,
-      businessName: application.businessName,
-      rejectionReason,
-    });
-  }
+  await enqueueOrganizerRejectedEmail({
+    userId: application.userId,
+    email: applicant.email,
+    fullName: applicant.fullName,
+    businessName: application.businessName,
+    rejectionReason,
+  });
 
   logger.info('Organizer application rejected', {
     applicationId,
@@ -220,9 +232,7 @@ export async function rejectApplication(
 }
 
 /**
- * Suspend a user.
- * For organizers: also updates their organizer_profiles.status to suspended.
- * Enqueueing the unpublish job happens in Phase 7 when event management exists.
+ * Suspend a user (with organizer profile sync).
  */
 export async function suspendUser(
   userId: string,
@@ -230,19 +240,19 @@ export async function suspendUser(
   adminId: string
 ): Promise<void> {
   const user = await db
-    .select({ role: users.role, email: users.email, fullName: users.fullName, isSuspended: users.isSuspended })
+    .select({
+      role: users.role,
+      email: users.email,
+      fullName: users.fullName,
+      isSuspended: users.isSuspended,
+    })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
     .then((rows) => rows[0]);
 
-  if (!user) {
-    throw new NotFoundError('User not found');
-  }
-
-  if (user.isSuspended) {
-    throw new ConflictError('User is already suspended');
-  }
+  if (!user) throw new NotFoundError('User not found');
+  if (user.isSuspended) throw new ConflictError('User is already suspended');
 
   await db.transaction(async (tx) => {
     await tx
@@ -255,7 +265,6 @@ export async function suspendUser(
       })
       .where(eq(users.id, userId));
 
-    // If organizer, suspend their profile too
     if (user.role === 'organizer') {
       await tx
         .update(organizerProfiles)
@@ -265,7 +274,6 @@ export async function suspendUser(
   });
 
   if (user.role === 'organizer') {
-    // Get business name for the email
     const profile = await db
       .select({ businessName: organizerProfiles.businessName })
       .from(organizerProfiles)
@@ -282,16 +290,14 @@ export async function suspendUser(
         reason,
       });
     }
-
-    // PHASE 7: enqueue unpublish-suspended-organizer-events cleanup job
+    // PHASE 7: enqueue unpublish job
   }
 
   logger.info('User suspended', { userId, adminId, reason, role: user.role });
 }
 
 /**
- * Unsuspend a user.
- * Does NOT auto-republish organizer events — organizer must do that manually.
+ * Unsuspend a user (with organizer profile sync).
  */
 export async function unsuspendUser(
   userId: string,
@@ -304,13 +310,8 @@ export async function unsuspendUser(
     .limit(1)
     .then((rows) => rows[0]);
 
-  if (!user) {
-    throw new NotFoundError('User not found');
-  }
-
-  if (!user.isSuspended) {
-    throw new ConflictError('User is not suspended');
-  }
+  if (!user) throw new NotFoundError('User not found');
+  if (!user.isSuspended) throw new ConflictError('User is not suspended');
 
   await db.transaction(async (tx) => {
     await tx
