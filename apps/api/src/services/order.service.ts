@@ -31,12 +31,11 @@ import {
 import type { CreateOrderInput } from '@eventhub/validators';
 import type { OrderDTO, OrderListItemDTO, OrderStatus } from '@eventhub/types';
 
-// ─── Availability helpers ─────────────────────────────────────────────────────
+// INTERNAL HELPERS
 
 /**
- * Atomically decrement Redis availability counters for a set of ticket types.
- * If any counter would go below 0, rolls back ALL decrements and throws.
- * Used for PAID events only — free events use DB directly.
+ * Atomically decrement Redis availability counters using Lua script.
+ * Rolls back on any shortage. Falls back gracefully on Redis failure.
  */
 async function decrementAvailability(
   items: Array<{ ticketTypeId: string; quantity: number }>
@@ -88,7 +87,7 @@ async function decrementAvailability(
 }
 
 /**
- * Release Redis availability counters (on order expiry or payment failure).
+ * Releases Redis availability counters (on failure/expiry/refund).
  */
 export async function releaseAvailability(
   items: Array<{ ticketTypeId: string; quantity: number }>
@@ -107,12 +106,7 @@ export async function releaseAvailability(
   }
 }
 
-// ─── Shape helpers ────────────────────────────────────────────────────────────
-
-/**
- * Builds a complete OrderDTO with items and attendees.
- * This is the single source of truth for full order details.
- */
+// Builds complete OrderDTO with items and attendees.
 async function buildOrderDTO(orderId: string): Promise<OrderDTO | null> {
   const row = await queryOrderWithDetails(orderId);
   if (!row) return null;
@@ -183,7 +177,7 @@ async function buildOrderDTO(orderId: string): Promise<OrderDTO | null> {
   };
 }
 
-// ─── Create order ─────────────────────────────────────────────────────────────
+// PUBLIC SERVICE FUNCTIONS
 
 export async function createOrder(
   userId: string,
@@ -199,7 +193,7 @@ export async function createOrder(
   totalAmount: number;
   expiresAt: string | null;
 }> {
-  // Load event
+  // Load and validate event
   const [event] = await db
     .select()
     .from(events)
@@ -210,10 +204,9 @@ export async function createOrder(
   if (!event.isPublished) throw new ConflictError('This event is not available for booking.');
   if (event.isCancelled) throw new ConflictError('This event has been cancelled.');
 
-  // Load and validate ticket types
+  // Validate ticket types and availability
   const ticketTypeIds = input.items.map((i) => i.ticketTypeId);
   const ticketTypeRows = await queryTicketTypesByIds(ticketTypeIds);
-
   const typeMap = new Map(ticketTypeRows.map((t) => [t.id, t]));
 
   for (const item of input.items) {
@@ -242,7 +235,7 @@ export async function createOrder(
     }
   }
 
-  // Compute totals
+  // Compute pricing
   const settings = await getSettings();
   let subtotal = 0;
   const lineItems = input.items.map((item) => {
@@ -264,6 +257,7 @@ export async function createOrder(
   const orderNumber = generateOrderNumber();
   const expiresAt = isFreeOrder ? null : new Date(Date.now() + 30 * 60 * 1000);
 
+  // Reserve availability for paid orders
   if (!isFreeOrder) {
     await decrementAvailability(
       input.items.map((i) => ({ ticketTypeId: i.ticketTypeId, quantity: i.quantity }))
@@ -336,8 +330,6 @@ export async function createOrder(
   };
 }
 
-// ─── Get order ────────────────────────────────────────────────────────────────
-
 export async function getOrderByNumber(
   orderNumber: string,
   userId: string
@@ -402,8 +394,6 @@ export async function getUserOrders(
     totalPages: 1, // Placeholder
   };
 }
-
-// ─── Other methods (unchanged) ────────────────────────────────────────────────
 
 export async function expireOrder(orderId: string): Promise<void> {
   const order = await queryOrderById(orderId);
