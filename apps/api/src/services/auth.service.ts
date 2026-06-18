@@ -12,15 +12,14 @@ import {
 import { blacklistToken } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
 
+
 const BCRYPT_ROUNDS = 12;
-// Matches JWT_REFRESH_EXPIRES_IN "7d" in milliseconds
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface AuthTokenPair {
   accessToken: string;
   refreshToken: string;
 }
-
 export interface RegisterInput {
   email: string;
   password: string;
@@ -33,12 +32,13 @@ export interface LoginInput {
   password: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// INTERNAL HELPERS 
 
 async function hashToken(token: string): Promise<string> {
   return bcrypt.hash(token, 10);
 }
 
+// Issues a new access + refresh token pair and persists the refresh token.
 async function issueTokenPair(
   userId: string,
   email: string,
@@ -64,7 +64,40 @@ async function issueTokenPair(
   return { accessToken, refreshToken };
 }
 
-// ─── Public service functions ─────────────────────────────────────────────────
+// Finds a user by email (case-insensitive).
+async function getUserByEmail(email: string) {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email.toLowerCase()))
+    .limit(1);
+
+  return user;
+}
+
+// Verifies password and returns the user if valid.
+async function validateCredentials(input: LoginInput) {
+  const user = await getUserByEmail(input.email);
+
+  if (!user) {
+    throw Object.assign(new Error('Invalid email or password.'), {
+      statusCode: 401,
+      code: 'INVALID_CREDENTIALS',
+    });
+  }
+
+  const passwordMatch = await bcrypt.compare(input.password, user.passwordHash);
+  if (!passwordMatch) {
+    throw Object.assign(new Error('Invalid email or password.'), {
+      statusCode: 401,
+      code: 'INVALID_CREDENTIALS',
+    });
+  }
+
+  return user;
+}
+
+// PUBLIC SERVICE FUNCTIONS
 
 export async function register(input: RegisterInput): Promise<{
   user: { id: string; email: string; fullName: string; role: string };
@@ -123,26 +156,7 @@ export async function login(input: LoginInput): Promise<{
   };
   tokens: AuthTokenPair;
 }> {
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, input.email.toLowerCase()))
-    .limit(1);
-
-  if (!user) {
-    throw Object.assign(new Error('Invalid email or password.'), {
-      statusCode: 401,
-      code: 'INVALID_CREDENTIALS',
-    });
-  }
-
-  const passwordMatch = await bcrypt.compare(input.password, user.passwordHash);
-  if (!passwordMatch) {
-    throw Object.assign(new Error('Invalid email or password.'), {
-      statusCode: 401,
-      code: 'INVALID_CREDENTIALS',
-    });
-  }
+  const user = await validateCredentials(input);
 
   if (user.isSuspended) {
     throw Object.assign(
@@ -172,7 +186,6 @@ export async function refresh(incomingRefreshToken: string): Promise<{
   user: { id: string; email: string; fullName: string; role: string };
   tokens: AuthTokenPair;
 }> {
-  // 1. Verify JWT signature + expiry
   let payload: ReturnType<typeof verifyRefreshToken>;
   try {
     payload = verifyRefreshToken(incomingRefreshToken);
@@ -183,7 +196,7 @@ export async function refresh(incomingRefreshToken: string): Promise<{
     });
   }
 
-  // 2. Find all non-expired, non-revoked tokens in this family
+  // Find active tokens in family
   const familyTokens = await db
     .select()
     .from(refreshTokens)
@@ -195,7 +208,7 @@ export async function refresh(incomingRefreshToken: string): Promise<{
       )
     );
 
-  // 3. Find the matching token by comparing hashes
+  // Check for matching token hash
   let matchedToken: (typeof familyTokens)[0] | undefined;
   for (const record of familyTokens) {
     const matches = await bcrypt.compare(incomingRefreshToken, record.tokenHash);
@@ -205,7 +218,7 @@ export async function refresh(incomingRefreshToken: string): Promise<{
     }
   }
 
-  // 4. If no match — token reuse detected. Revoke entire family.
+  // Token reuse detected
   if (!matchedToken) {
     logger.warn('Refresh token reuse detected — revoking family', {
       userId: payload.userId,
@@ -230,13 +243,13 @@ export async function refresh(incomingRefreshToken: string): Promise<{
     );
   }
 
-  // 5. Revoke the used token
+  // Revoke used token
   await db
     .update(refreshTokens)
     .set({ isRevoked: true })
     .where(eq(refreshTokens.id, matchedToken.id));
 
-  // 6. Load user — include fullName so the client's AuthUser shape stays complete
+  // Load current user
   const [user] = await db
     .select({
       id: users.id,
@@ -263,7 +276,7 @@ export async function refresh(incomingRefreshToken: string): Promise<{
     );
   }
 
-  // 7. Issue new token pair in the same family (rotation)
+  // Issue new pair (token rotation)
   const tokens = await issueTokenPair(user.id, user.email, user.role, payload.family);
 
   logger.info('Token refreshed', { userId: user.id });
@@ -273,11 +286,12 @@ export async function refresh(incomingRefreshToken: string): Promise<{
     tokens,
   };
 }
+
 export async function logout(
   accessToken: string,
   refreshToken: string | undefined
 ): Promise<void> {
-  // Blacklist the access token JTI in Redis
+  // Blacklist access token
   const ttl = getTokenRemainingTtl(accessToken);
   if (ttl > 0) {
     try {
@@ -286,16 +300,15 @@ export async function logout(
       };
       if (jti) await blacklistToken(jti, ttl);
     } catch {
-      // Non-fatal — token may already be expired
+      // Non-fatal
     }
   }
 
-  // Revoke the refresh token if provided
+  // Revoke refresh token if provided
   if (refreshToken) {
     try {
       const payload = verifyRefreshToken(refreshToken);
 
-      // Find and revoke matching token
       const familyTokens = await db
         .select()
         .from(refreshTokens)
@@ -318,7 +331,7 @@ export async function logout(
         }
       }
     } catch {
-      // Non-fatal — refresh token may already be expired or invalid
+      // Non-fatal
     }
   }
 
@@ -339,7 +352,7 @@ export async function logoutAll(userId: string, accessToken: string): Promise<vo
     }
   }
 
-  // Revoke all refresh tokens for this user
+  // Revoke all refresh tokens
   await db
     .update(refreshTokens)
     .set({ isRevoked: true })

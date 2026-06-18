@@ -1,12 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken }                from '../lib/jwt.js';
-import type { AccessTokenPayload }       from '../lib/jwt.js';
-import { db }                         from '../db/index.js';
-import { organizerProfiles }       from '../db/schema/index.js';
-import { eq }                   from 'drizzle-orm';
-import type { UserRole }      from '@eventhub/types';
+import { verifyAccessToken } from '../lib/jwt.js';
+import type { AccessTokenPayload } from '../lib/jwt.js';
+import { db } from '../db/index.js';
+import { organizerProfiles, users } from '../db/schema/index.js';
+import { eq } from 'drizzle-orm';
+import type { UserRole } from '@eventhub/types';
 
-// Extend Express Request with authenticated user context
 declare global {
   namespace Express {
     interface Request {
@@ -24,10 +23,40 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-/**
- * Verifies Bearer token and attaches req.user.
- * Returns 401 if missing or invalid.
- */
+// INTERNAL HELPERS
+
+//Sends a standardized unauthorized response.
+function sendUnauthorized(res: Response, message: string): void {
+  res.status(401).json({
+    success: false,
+    error: { code: 'UNAUTHORIZED', message },
+  });
+}
+
+// Sends a standardized forbidden response.
+function sendForbidden(res: Response, code: string, message: string): void {
+  res.status(403).json({
+    success: false,
+    error: { code, message },
+  });
+}
+
+// Checks if a user is suspended (used by multiple guards).
+async function isUserSuspended(userId: string): Promise<boolean> {
+  const [user] = await db
+    .select({ isSuspended: users.isSuspended })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return user?.isSuspended ?? false;
+}
+
+// PUBLIC MIDDLEWARE
+
+ //Verifies Bearer token and attaches req.user.
+ //Returns 401 if missing or invalid.
+ 
 export async function authenticate(
   req: Request,
   res: Response,
@@ -36,10 +65,7 @@ export async function authenticate(
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({
-      success: false,
-      error: { code: 'UNAUTHORIZED', message: 'Authentication required.' },
-    });
+    sendUnauthorized(res, 'Authentication required.');
     return;
   }
 
@@ -55,35 +81,25 @@ export async function authenticate(
         ? 'Your session has expired. Please log in again.'
         : 'Invalid authentication token.';
 
-    res.status(401).json({
-      success: false,
-      error: { code: 'UNAUTHORIZED', message },
-    });
+    sendUnauthorized(res, message);
   }
 }
 
-/**
- * Factory: require a specific role (or one of several roles).
- * Must be used AFTER authenticate.
- */
+//Factory: require a specific role (or one of several roles).
+//Must be used AFTER authenticate.
 export function requireRole(...roles: Array<'attendee' | 'organizer' | 'admin'>) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      res.status(401).json({
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: 'Authentication required.' },
-      });
+      sendUnauthorized(res, 'Authentication required.');
       return;
     }
 
     if (!roles.includes(req.user.role)) {
-      res.status(403).json({
-        success: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'You do not have permission to perform this action.',
-        },
-      });
+      sendForbidden(
+        res,
+        'FORBIDDEN',
+        'You do not have permission to perform this action.'
+      );
       return;
     }
 
@@ -91,10 +107,8 @@ export function requireRole(...roles: Array<'attendee' | 'organizer' | 'admin'>)
   };
 }
 
-/**
- * Ensures the organizer's profile is approved.
- * Must be used AFTER authenticate + requireRole('organizer').
- */
+ //Ensures the organizer's profile is approved.
+ //Must be used AFTER authenticate + requireRole('organizer').
 export async function requireOrganizerApproved(
   req: Request,
   res: Response,
@@ -108,24 +122,16 @@ export async function requireOrganizerApproved(
       .limit(1);
 
     if (!profile) {
-      res.status(403).json({
-        success: false,
-        error: {
-          code: 'ORGANIZER_NOT_FOUND',
-          message: 'Organizer profile not found.',
-        },
-      });
+      sendForbidden(res, 'ORGANIZER_NOT_FOUND', 'Organizer profile not found.');
       return;
     }
 
     if (profile.status !== 'approved') {
-      res.status(403).json({
-        success: false,
-        error: {
-          code: 'ORGANIZER_NOT_APPROVED',
-          message: 'Your organizer account has not been approved yet.',
-        },
-      });
+      sendForbidden(
+        res,
+        'ORGANIZER_NOT_APPROVED',
+        'Your organizer account has not been approved yet.'
+      );
       return;
     }
 
@@ -135,41 +141,23 @@ export async function requireOrganizerApproved(
   }
 }
 
-/**
- * Blocks suspended users.
- * Must be used AFTER authenticate.
- * Note: suspension is also checked at login; this covers in-flight tokens.
- */
+
+// Blocks suspended users.
+// Must be used AFTER authenticate.
 export async function requireNotSuspended(
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
-    const { users } = await import('../db/schema/index.js');
+    const isSuspended = await isUserSuspended(req.user.userId);
 
-    const [user] = await db
-      .select({ isSuspended: users.isSuspended })
-      .from(users)
-      .where(eq(users.id, req.user.userId))
-      .limit(1);
-
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: 'User not found.' },
-      });
-      return;
-    }
-
-    if (user.isSuspended) {
-      res.status(403).json({
-        success: false,
-        error: {
-          code: 'ACCOUNT_SUSPENDED',
-          message: 'Your account has been suspended. Please contact support.',
-        },
-      });
+    if (isSuspended) {
+      sendForbidden(
+        res,
+        'ACCOUNT_SUSPENDED',
+        'Your account has been suspended. Please contact support.'
+      );
       return;
     }
 

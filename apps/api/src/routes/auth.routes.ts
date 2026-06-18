@@ -13,7 +13,7 @@ import { registerSchema, loginSchema } from '@eventhub/validators';
 
 const router: Router = Router();
 
-// ─── Rate limiters ────────────────────────────────────────────────────────────
+// ─── Rate limiters
 
 const loginLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
