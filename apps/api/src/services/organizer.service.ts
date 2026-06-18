@@ -1,16 +1,20 @@
 import { eq, and } from 'drizzle-orm';
-import { db } from '../db/index';
+import { db } from '../db/index.js';
 import {
   organizerApplications,
   organizerProfiles,
   users,
-} from '../db/schema/index';
-import { encrypt, maskAccountNumber } from '../utils/encryption';
+} from '../db/schema/index.js';
+import { encrypt, maskAccountNumber } from '../utils/encryption.js';
 import { logger } from '../lib/logger.js';
 import {
   enqueueOrganizerApplicationReceivedEmail,
-} from '../jobs/producers/email.producer';
-import { AppError, ConflictError, NotFoundError } from '../middleware/error.middleware';
+} from '../jobs/producers/email.producer.js';
+import {
+  AppError,
+  ConflictError,
+  NotFoundError,
+} from '../middleware/error.middleware.js';
 
 export interface SubmitApplicationInput {
   userId: string;
@@ -24,10 +28,76 @@ export interface SubmitApplicationInput {
   bankAccountName: string;
 }
 
-/**
- * Submit an organizer application.
- * A user can only have one pending/approved application at a time.
- */
+// INTERNAL HELPERS 
+
+// Checks for existing organizer application and enforces business rules.
+async function checkForExistingApplication(userId: string): Promise<void> {
+  const existing = await db
+    .select({ id: organizerApplications.id, status: organizerApplications.status })
+    .from(organizerApplications)
+    .where(eq(organizerApplications.userId, userId))
+    .limit(1);
+
+  if (existing.length === 0) return;
+
+  const app = existing[0]!;
+
+  if (app.status === 'pending') {
+    throw new ConflictError(
+      'You already have a pending application. Please wait for our team to review it.'
+    );
+  }
+
+  if (app.status === 'approved') {
+    throw new ConflictError(
+      'Your application has already been approved. Please access your organizer dashboard.'
+    );
+  }
+
+  // Rejected users are allowed to re-apply
+}
+
+// Fetches user details needed for email and application.
+async function getUserForApplication(userId: string) {
+  const user = await db
+    .select({ email: users.email, fullName: users.fullName })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  return user;
+}
+
+// Maps raw application row to admin-friendly response shape.
+function mapApplicationForAdmin(row: any) {
+  return {
+    id: row.id,
+    businessName: row.businessName,
+    businessDescription: row.businessDescription,
+    websiteUrl: row.websiteUrl,
+    instagramHandle: row.instagramHandle,
+    bankName: row.bankName,
+    bankAccountName: row.bankAccountName,
+    status: row.status,
+    createdAt: row.createdAt,
+    rejectionReason: row.rejectionReason,
+    user: {
+      id: row.userId,
+      email: row.userEmail,
+      fullName: row.userFullName,
+    },
+  };
+}
+
+// PUBLIC SERVICE FUNCTIONS
+
+//Submit an organizer application.
+//A user can only have one pending/approved application at a time.
 export async function submitApplication(
   input: SubmitApplicationInput
 ): Promise<typeof organizerApplications.$inferSelect> {
@@ -43,41 +113,11 @@ export async function submitApplication(
     bankAccountName,
   } = input;
 
-  // Check for existing pending or approved application
-  const existing = await db
-    .select({ id: organizerApplications.id, status: organizerApplications.status })
-    .from(organizerApplications)
-    .where(eq(organizerApplications.userId, userId))
-    .limit(1);
+  await checkForExistingApplication(userId);
 
-  if (existing.length > 0) {
-    const app = existing[0]!;
-    if (app.status === 'pending') {
-      throw new ConflictError(
-        'You already have a pending application. Please wait for our team to review it.'
-      );
-    }
-    if (app.status === 'approved') {
-      throw new ConflictError(
-        'Your application has already been approved. Please access your organizer dashboard.'
-      );
-    }
-    // Rejected users can re-apply — allow them through
-  }
+  const user = await getUserForApplication(userId);
 
-  // Check user exists and get their details for email
-  const user = await db
-    .select({ email: users.email, fullName: users.fullName })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1)
-    .then((rows) => rows[0]);
-
-  if (!user) {
-    throw new NotFoundError('User not found');
-  }
-
-  // Encrypt bank account number at rest
+  // Encrypt sensitive bank details
   const encryptedAccountNumber = encrypt(bankAccountNumber);
 
   const [application] = await db
@@ -100,7 +140,7 @@ export async function submitApplication(
     throw new AppError(500, 'Failed to create application');
   }
 
-  // Enqueue confirmation email
+  // Notify applicant
   await enqueueOrganizerApplicationReceivedEmail({
     userId,
     email: user.email,
@@ -117,9 +157,7 @@ export async function submitApplication(
   return application;
 }
 
-/**
- * Get the current user's application status.
- */
+//Get the current user's application status.
 export async function getApplicationStatus(userId: string): Promise<{
   status: string;
   businessName: string;
@@ -142,10 +180,8 @@ export async function getApplicationStatus(userId: string): Promise<{
   return application ?? null;
 }
 
-/**
- * Get the organizer profile for a user.
- * Masks the bank account number before returning.
- */
+//Get the organizer profile for a user.
+//Always returns masked bank account number.
 export async function getOrganizerProfile(userId: string) {
   const profile = await db
     .select()
@@ -158,16 +194,13 @@ export async function getOrganizerProfile(userId: string) {
 
   return {
     ...profile,
-    // Always return masked account number — never the encrypted value
     bankAccountNumber: profile.bankAccountNumber
       ? maskAccountNumber(profile.bankAccountNumber)
       : null,
   };
 }
 
-/**
- * Get all organizer applications for admin review.
- */
+//Get all organizer applications for admin review (paginated).
 export async function listApplicationsForAdmin(
   status?: 'pending' | 'approved' | 'rejected',
   page = 1,
@@ -225,31 +258,13 @@ export async function listApplicationsForAdmin(
   ]);
 
   return {
-    applications: applicationRows.map((row) => ({
-      id: row.id,
-      businessName: row.businessName,
-      businessDescription: row.businessDescription,
-      websiteUrl: row.websiteUrl,
-      instagramHandle: row.instagramHandle,
-      bankName: row.bankName,
-      bankAccountName: row.bankAccountName,
-      status: row.status,
-      createdAt: row.createdAt,
-      rejectionReason: row.rejectionReason,
-      user: {
-        id: row.userId,
-        email: row.userEmail,
-        fullName: row.userFullName,
-      },
-    })),
+    applications: applicationRows.map(mapApplicationForAdmin),
     total: countResult.length,
   };
 }
 
-/**
- * Get a single application by ID for admin review.
- * Never returns the encrypted bank account number.
- */
+//Get a single application by ID for admin review.
+//Never exposes encrypted bank details.
 export async function getApplicationByIdForAdmin(applicationId: string) {
   const row = await db
     .select({
