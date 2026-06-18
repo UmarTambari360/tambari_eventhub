@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { Calendar, MapPin, Users, Tag, ExternalLink } from 'lucide-react';
 import { getEventBySlugAction } from '@/actions/event.actions';
 import { EventTicketSelectorWrapper } from '@/components/public/event-ticket-selector-wrapper';
+import { AddToCalendar } from '@/components/public/add-to-calendar';
+import { SocialShare } from '@/components/public/social-share';
 import { formatDate } from '@/lib/utils';
 
 interface EventDetailPageProps {
@@ -18,20 +20,24 @@ export async function generateMetadata({ params }: EventDetailPageProps): Promis
   }
 
   const event = result.data;
+  const description = event.description.slice(0, 160);
 
   return {
     title: event.title,
-    description: event.description.slice(0, 160),
+    description,
     openGraph: {
       title: event.title,
-      description: event.description.slice(0, 160),
-      images: event.bannerImageUrl ? [{ url: event.bannerImageUrl }] : [],
+      description,
+      images: event.bannerImageUrl
+        ? [{ url: event.bannerImageUrl, width: 1200, height: 630, alt: event.title }]
+        : [],
       type: 'website',
+      siteName: 'EventHub',
     },
     twitter: {
       card: 'summary_large_image',
       title: event.title,
-      description: event.description.slice(0, 160),
+      description,
       images: event.bannerImageUrl ? [event.bannerImageUrl] : [],
     },
   };
@@ -65,13 +71,18 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     timeZone: 'Africa/Lagos',
   }).format(new Date(event.eventDate));
 
+  // const eventUrl =
+    // typeof window === 'undefined'
+      // ? `https://eventhub.ng/events/${event.slug}`
+      // : `${window.location.origin}/events/${event.slug}`;
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Main content */}
         <div className="lg:col-span-2">
           {/* Banner */}
-          <div className="relative mb-6 h-72 md:h-96 rounded-2xl overflow-hidden bg-linear-to-br from-violet-100 to-indigo-100">
+          <div className="relative mb-6 h-72 md:h-96 rounded-2xl overflow-hidden bg-gradient-to-br from-violet-100 to-indigo-100">
             {event.bannerImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -112,34 +123,49 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             ))}
           </div>
 
-          {/* Title */}
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight">
-            {event.title}
-          </h1>
+          {/* Title + share */}
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <h1 className="text-3xl md:text-4xl font-bold text-(--text-primary) leading-tight">
+              {event.title}
+            </h1>
+            <SocialShare
+              url={`/events/${event.slug}`}
+              title={event.title}
+              className="shrink-0 mt-1"
+            />
+          </div>
 
           {/* Event details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            <div className="flex items-start gap-3 rounded-xl border border-gray-100 p-4">
+            <div className="flex items-start gap-3 rounded-xl border border-(--border) p-4">
               <Calendar className="h-5 w-5 text-violet-500 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-0.5">Date & Time</p>
-                <p className="text-sm font-medium text-gray-900">{startDate}</p>
-                <p className="text-sm text-gray-600">{startTime} WAT</p>
+                <p className="text-xs text-(--text-muted) uppercase tracking-wide font-medium mb-0.5">
+                  Date & Time
+                </p>
+                <p className="text-sm font-medium text-(--text-primary)">{startDate}</p>
+                <p className="text-sm text-(--text-muted)">{startTime} WAT</p>
                 {event.eventEndDate && (
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-(--text-muted) mt-0.5">
                     Ends{' '}
-                    {formatDate(event.eventEndDate, { hour: 'numeric', minute: '2-digit', hour12: true })}
+                    {formatDate(event.eventEndDate, {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true,
+                    })}
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="flex items-start gap-3 rounded-xl border border-gray-100 p-4">
+            <div className="flex items-start gap-3 rounded-xl border border-(--border) p-4">
               <MapPin className="h-5 w-5 text-violet-500 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-0.5">Location</p>
-                <p className="text-sm font-medium text-gray-900">{event.venue}</p>
-                <p className="text-sm text-gray-600">{event.location}</p>
+                <p className="text-xs text-(--text-muted) uppercase tracking-wide font-medium mb-0.5">
+                  Location
+                </p>
+                <p className="text-sm font-medium text-(--text-primary)">{event.venue}</p>
+                <p className="text-sm text-(--text-muted)">{event.location}</p>
                 {event.address && (
                   <a
                     href={`https://maps.google.com/?q=${encodeURIComponent(event.address)}`}
@@ -154,32 +180,50 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             </div>
 
             {event.totalCapacity && (
-              <div className="flex items-start gap-3 rounded-xl border border-gray-100 p-4">
+              <div className="flex items-start gap-3 rounded-xl border border-(--border) p-4">
                 <Users className="h-5 w-5 text-violet-500 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-0.5">Capacity</p>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-xs text-(--text-muted) uppercase tracking-wide font-medium mb-0.5">
+                    Capacity
+                  </p>
+                  <p className="text-sm font-medium text-(--text-primary)">
                     {event.totalCapacity.toLocaleString('en-NG')} attendees
                   </p>
                 </div>
               </div>
             )}
 
-            <div className="flex items-start gap-3 rounded-xl border border-gray-100 p-4">
+            <div className="flex items-start gap-3 rounded-xl border border-(--border) p-4">
               <Tag className="h-5 w-5 text-violet-500 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-0.5">Organizer</p>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-xs text-(--text-muted) uppercase tracking-wide font-medium mb-0.5">
+                  Organizer
+                </p>
+                <p className="text-sm font-medium text-(--text-primary)">
                   {event.organizer.businessName ?? event.organizer.fullName}
                 </p>
               </div>
             </div>
           </div>
 
+          {/* Add to calendar */}
+          {!event.isCancelled && (
+            <div className="mb-8">
+              <AddToCalendar
+                title={event.title}
+                description={event.description}
+                location={`${event.venue}, ${event.location}${event.address ? `, ${event.address}` : ''}`}
+                startDate={new Date(event.eventDate)}
+                endDate={event.eventEndDate ? new Date(event.eventEndDate) : null}
+                url={`https://eventhub.ng/events/${event.slug}`}
+              />
+            </div>
+          )}
+
           {/* Description */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">About this event</h2>
-            <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
+            <h2 className="text-xl font-semibold text-(--text-primary) mb-3">About this event</h2>
+            <div className="prose prose-sm max-w-none text-(--text-secondary) leading-relaxed whitespace-pre-line">
               {event.description}
             </div>
           </div>
