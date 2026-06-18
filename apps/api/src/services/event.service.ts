@@ -1,15 +1,15 @@
 import { eq, sql } from 'drizzle-orm';
-import { db }      from '../db/index.js';
+import { db } from '../db/index.js';
 import { events, ticketTypes, organizerProfiles } from '../db/schema/index.js';
-import { generateSlug }                         from '../utils/code-generator.js';
-import { cacheGet, cacheSet, cacheDel }       from '../lib/redis.js';
-import { logger }                           from '../lib/logger.js';
+import { generateSlug } from '../utils/code-generator.js';
+import { cacheGet, cacheSet, cacheDel } from '../lib/redis.js';
+import { logger } from '../lib/logger.js';
 import {
   AppError,
   NotFoundError,
   ForbiddenError,
   ConflictError,
-}                                      from '../middleware/error.middleware.js';
+} from '../middleware/error.middleware.js';
 import {
   queryEventBySlug,
   queryEventById,
@@ -17,64 +17,49 @@ import {
   queryPublishedEvents,
   queryFeaturedEvents,
   queryOrganizerEvents,
-}                                 from '../db/queries/events.queries.js';
-import type { 
-    CreateEventInput, 
-    UpdateEventInput, 
-    EventFilterInput } from '@eventhub/validators';
+} from '../db/queries/events.queries.js';
+import type {
+  CreateEventInput,
+  UpdateEventInput,
+  EventFilterInput,
+} from '@eventhub/validators';
 
 const FEATURED_CACHE_KEY = 'events:featured';
-const FEATURED_CACHE_TTL = 600; // 10 min
-const EVENT_CACHE_TTL = 300; // 5 min
+const FEATURED_CACHE_TTL = 600; // 10 minutes
+const EVENT_CACHE_TTL = 300; // 5 minutes
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// INTERNAL HELPERS
 
-/**
- * Derives isFree from ticket types: true if ALL types have price = 0.
- */
+// Verifies that the organizer has an approved profile.
+// Used before create/update/publish operations.
+async function ensureOrganizerApproved(organizerId: string): Promise<void> {
+  const [profile] = await db
+    .select({ status: organizerProfiles.status })
+    .from(organizerProfiles)
+    .where(eq(organizerProfiles.userId, organizerId))
+    .limit(1);
+
+  if (!profile || profile.status !== 'approved') {
+    throw new ForbiddenError(
+      'Your organizer account must be approved to manage events.'
+    );
+  }
+}
+
+// Invalidates both event-specific and featured cache.
+async function invalidateEventCache(slug: string): Promise<void> {
+  await cacheDel(`event:${slug}`, FEATURED_CACHE_KEY);
+}
+
+// Derives `isFree` from ticket types (true only if ALL are free).
 function computeIsFree(ticketTypeRows: Array<{ price: number }>): boolean {
   if (ticketTypeRows.length === 0) return false;
   return ticketTypeRows.every((t) => t.price === 0);
 }
 
-/**
- * Derives lowestPrice for list display.
- */
-// function computeLowestPrice(ticketTypeRows: Array<{ price: number; isActive: boolean }>): number | null {
-  // const active = ticketTypeRows.filter((t) => t.isActive);
-  // if (active.length === 0) return null;
-  // const prices = active.map((t) => t.price);
-  // const min = Math.min(...prices);
-  // return min === 0 ? null : min; // null = free
-// }
-
-function invalidateEventCache(slug: string): Promise<void> {
-  return cacheDel(`event:${slug}`, FEATURED_CACHE_KEY);
-}
-
-/**
- * Seeds Redis availability counters for all ticket types on event publish.
- * Uses SET so it's idempotent (re-publish after edit resets counters).
- */
-async function seedTicketAvailability(eventId: string): Promise<void> {
-  const types = await queryTicketTypesForEvent(eventId);
-  // PHASE 7: seed Redis availability counters
-  // For now we store them so Phase 7 can pick up:
-  // await Promise.all(types.map(t => redisClient.set(`ticket:${t.id}:available`, t.quantity - t.quantitySold)));
-  logger.debug('Ticket availability seeding deferred to Phase 7', {
-    eventId,
-    ticketCount: types.length,
-  });
-}
-
-// ─── Public / shared ──────────────────────────────────────────────────────────
-
-export async function getPublishedEvents(filter: EventFilterInput) {
-  const { rows, total } = await queryPublishedEvents(filter);
-  const { page, limit } = filter;
-  const totalPages = Math.ceil(total / limit);
-
-  const items = rows.map((row) => ({
+// Builds a standardized public event response shape.
+function mapToPublicEvent(row: any) {
+  return {
     id: row.id,
     title: row.title,
     slug: row.slug,
@@ -95,66 +80,17 @@ export async function getPublishedEvents(filter: EventFilterInput) {
     category: row.category as string | null,
     tags: row.tags,
     totalCapacity: row.totalCapacity,
-    lowestPrice: null as number | null, // populated below if needed
+    lowestPrice: null as number | null, // can be enhanced later
     totalSold: 0,
-  }));
-
-  return {
-    items,
-    total,
-    page,
-    limit,
-    totalPages,
-    hasNextPage: page < totalPages,
-    hasPrevPage: page > 1,
   };
 }
 
-export async function getFeaturedEvents() {
-  const cached = await cacheGet(FEATURED_CACHE_KEY);
-  if (cached) return JSON.parse(cached) as unknown[];
-
-  const rows = await queryFeaturedEvents();
-  const result = rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    slug: row.slug,
-    organizer: {
-      id: row.organizerId,
-      fullName: row.organizerFullName ?? '',
-      businessName: row.organizerBusinessName ?? null,
-    },
-    venue: row.venue,
-    location: row.location,
-    eventDate: row.eventDate.toISOString(),
-    eventEndDate: row.eventEndDate?.toISOString() ?? null,
-    thumbnailUrl: row.thumbnailUrl,
-    bannerImageUrl: row.bannerImageUrl,
-    isFree: row.isFree,
-    isFeatured: row.isFeatured,
-    isCancelled: row.isCancelled,
-    category: row.category,
-    tags: row.tags,
-    totalCapacity: row.totalCapacity,
-    featureOrder: row.featureOrder,
-  }));
-
-  await cacheSet(FEATURED_CACHE_KEY, JSON.stringify(result), FEATURED_CACHE_TTL);
-  return result;
-}
-
-export async function getEventBySlug(slug: string) {
-  const cacheKey = `event:${slug}`;
-  const cached = await cacheGet(cacheKey);
-  if (cached) return JSON.parse(cached) as unknown;
-
-  const event = await queryEventBySlug(slug);
-  if (!event) return null;
-
+// Builds detailed event response with ticket types (for getBySlug and organizer view).
+async function buildEventDetail(event: any) {
   const tTypes = await queryTicketTypesForEvent(event.id);
   const now = new Date();
 
-  const result = {
+  return {
     id: event.id,
     title: event.title,
     description: event.description,
@@ -210,6 +146,60 @@ export async function getEventBySlug(slug: string) {
       };
     }),
   };
+}
+
+// Seeds Redis availability counters (placeholder for Phase 7).
+async function seedTicketAvailability(eventId: string): Promise<void> {
+  const types = await queryTicketTypesForEvent(eventId);
+  // PHASE 7: Implement real Redis seeding here
+  logger.debug('Ticket availability seeding deferred to Phase 7', {
+    eventId,
+    ticketCount: types.length,
+  });
+}
+
+// PUBLIC SERVICE FUNCTIONS
+
+// ─── Public / Shared 
+
+export async function getPublishedEvents(filter: EventFilterInput) {
+  const { rows, total } = await queryPublishedEvents(filter);
+  const { page, limit } = filter;
+  const totalPages = Math.ceil(total / limit);
+
+  const items = rows.map(mapToPublicEvent);
+
+  return {
+    items,
+    total,
+    page,
+    limit,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPrevPage: page > 1,
+  };
+}
+
+export async function getFeaturedEvents() {
+  const cached = await cacheGet(FEATURED_CACHE_KEY);
+  if (cached) return JSON.parse(cached) as unknown[];
+
+  const rows = await queryFeaturedEvents();
+  const result = rows.map(mapToPublicEvent);
+
+  await cacheSet(FEATURED_CACHE_KEY, JSON.stringify(result), FEATURED_CACHE_TTL);
+  return result;
+}
+
+export async function getEventBySlug(slug: string) {
+  const cacheKey = `event:${slug}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return JSON.parse(cached) as unknown;
+
+  const event = await queryEventBySlug(slug);
+  if (!event) return null;
+
+  const result = await buildEventDetail(event);
 
   // Only cache published, non-cancelled events
   if (event.isPublished && !event.isCancelled) {
@@ -219,22 +209,13 @@ export async function getEventBySlug(slug: string) {
   return result;
 }
 
-// ─── Organizer operations ─────────────────────────────────────────────────────
+// Organizer operations
 
 export async function createEvent(
   organizerId: string,
   input: CreateEventInput
 ): Promise<{ id: string; slug: string }> {
-  // Verify organizer has an approved profile
-  const [profile] = await db
-    .select({ status: organizerProfiles.status })
-    .from(organizerProfiles)
-    .where(eq(organizerProfiles.userId, organizerId))
-    .limit(1);
-
-  if (!profile || profile.status !== 'approved') {
-    throw new ForbiddenError('Your organizer account must be approved to create events.');
-  }
+  await ensureOrganizerApproved(organizerId);
 
   const slug = generateSlug(input.title);
 
@@ -245,7 +226,6 @@ export async function createEvent(
     throw new AppError(422, 'Event end date must be after event start date.');
   }
 
-  // Compute isFree from ticket types
   const isFree = computeIsFree(input.ticketTypes);
 
   const [event] = await db
@@ -292,7 +272,7 @@ export async function createEvent(
     }))
   );
 
-  // Update organizer's event counter
+  // Update organizer counter
   await db
     .update(organizerProfiles)
     .set({ totalEventsCreated: sql`${organizerProfiles.totalEventsCreated} + 1` })
@@ -336,7 +316,7 @@ export async function updateEvent(
   if (input.thumbnailPublicId !== undefined)
     updateData.thumbnailPublicId = input.thumbnailPublicId || null;
 
-  // Recompute isFree if dates or ticket types might have changed
+  // Recompute isFree
   const currentTypes = await queryTicketTypesForEvent(eventId);
   updateData.isFree = computeIsFree(currentTypes);
 
@@ -363,7 +343,6 @@ export async function publishEvent(
   }
 
   if (publish) {
-    // Validate publish requirements
     const tTypes = await queryTicketTypesForEvent(eventId);
     const activeTypes = tTypes.filter((t) => t.isActive);
 
@@ -403,8 +382,7 @@ export async function cancelEvent(eventId: string, organizerId: string): Promise
     throw new ConflictError('Event is already cancelled.');
   }
 
-  // PHASE 7: Check for paid orders — if any exist, initiate bulk refund first
-  // For now we allow cancellation (refund logic added in Phase 7)
+  // PHASE 7: Add paid order refund checks here
 
   await db
     .update(events)
@@ -426,38 +404,7 @@ export async function getOrganizerEventById(
     throw new ForbiddenError('Access denied.');
   }
 
-  const tTypes = await queryTicketTypesForEvent(eventId);
-  const now = new Date();
-
-  return {
-    ...event,
-    eventDate: event.eventDate.toISOString(),
-    eventEndDate: event.eventEndDate?.toISOString() ?? null,
-    createdAt: event.createdAt.toISOString(),
-    updatedAt: event.updatedAt.toISOString(),
-    ticketTypes: tTypes.map((t) => ({
-      id: t.id,
-      eventId: t.eventId,
-      name: t.name,
-      description: t.description,
-      price: t.price,
-      quantity: t.quantity,
-      quantitySold: t.quantitySold,
-      available: t.quantity - t.quantitySold,
-      saleStartDate: t.saleStartDate?.toISOString() ?? null,
-      saleEndDate: t.saleEndDate?.toISOString() ?? null,
-      minPurchase: t.minPurchase,
-      maxPurchase: t.maxPurchase,
-      isActive: t.isActive,
-      isSaleOpen:
-        t.isActive &&
-        t.quantity - t.quantitySold > 0 &&
-        (!t.saleStartDate || t.saleStartDate <= now) &&
-        (!t.saleEndDate || t.saleEndDate >= now),
-      createdAt: t.createdAt.toISOString(),
-      updatedAt: t.updatedAt.toISOString(),
-    })),
-  };
+  return await buildEventDetail(event);
 }
 
 export async function getOrganizerEventsList(
