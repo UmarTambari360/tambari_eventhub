@@ -159,10 +159,8 @@ async function paystackFetch<T>(
   return body;
 }
 
-/**
- * Fetch list of Nigerian banks from Paystack.
- * Cached in Redis for 24 hours.
- */
+//Fetch list of Nigerian banks from Paystack.
+//Cached in Redis for 24 hours.
 export async function getPaystackBanks(): Promise<PaystackBank[]> {
   const cached = await cacheGet(BANKS_CACHE_KEY);
   if (cached) {
@@ -180,10 +178,8 @@ export async function getPaystackBanks(): Promise<PaystackBank[]> {
   return activeBanks;
 }
 
-/**
- * Verify a bank account number and get the account name.
- * Calls Paystack's account name verification endpoint.
- */
+//Verify a bank account number and get the account name.
+//Calls Paystack's account name verification endpoint.
 export async function verifyBankAccount(
   accountNumber: string,
   bankCode: string
@@ -194,10 +190,8 @@ export async function verifyBankAccount(
   return result.data;
 }
 
-/**
- * Create a Paystack subaccount for an approved organizer.
- * The platform bears the transaction fee (bearer: "account").
- */
+//Create a Paystack subaccount for an approved organizer.
+//The platform bears the transaction fee (bearer: "account").
 export async function createSubaccount(
   businessName: string,
   settlementBank: string, // bank code
@@ -217,10 +211,8 @@ export async function createSubaccount(
   return result.data;
 }
 
-/**
- * Initialize a Paystack transaction with split payment.
- * The platform fee is deducted from the organizer's share automatically.
- */
+//Initialize a Paystack transaction with split payment.
+//The platform fee is deducted from the organizer's share automatically.
 export async function initializeTransaction(
   options: InitializeTransactionOptions
 ): Promise<PaystackTransactionInitialize> {
@@ -272,9 +264,7 @@ export async function verifyTransaction(
   return result.data;
 }
 
-/**
- * Initiate a refund for a transaction.
- */
+//Initiate a refund for a transaction.
 export async function refundTransaction(
   transactionReference: string,
   amount?: number // if omitted, full refund
