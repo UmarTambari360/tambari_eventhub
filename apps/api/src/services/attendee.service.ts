@@ -16,14 +16,91 @@ import {
 } from '../middleware/error.middleware.js';
 import type { AttendeeDetailInput } from '@eventhub/validators';
 
-// ─── Create attendees ─────────────────────────────────────────────────────────
+// INTERNAL HELPERS 
+
+async function getOrderEventId(orderId: string): Promise<string> {
+  const [order] = await db
+    .select({ eventId: orders.eventId })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order) {
+    throw new NotFoundError('Order not found.');
+  }
+
+  return order.eventId;
+}
+
+/**
+ * Builds a flat list of attendee records from order items + details.
+ * Ensures correct mapping for multi-ticket orders.
+ */
+function buildAttendeeValues(
+  orderId: string,
+  items: Array<{ id: string; ticketTypeId: string; quantity: number }>,
+  attendeeDetails: AttendeeDetailInput[],
+  eventId: string,
+  defaultFirstName?: string,
+  defaultLastName?: string,
+  defaultEmail?: string,
+  defaultPhone?: string | null
+): Array<{
+  orderId: string;
+  orderItemId: string;
+  eventId: string;
+  ticketTypeId: string;
+  ticketCode: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string | null;
+}> {
+  const attendeeValues: any[] = [];
+  let detailIndex = 0;
+
+  for (const item of items) {
+    for (let i = 0; i < item.quantity; i++) {
+      const detail = attendeeDetails?.[detailIndex];
+
+      attendeeValues.push({
+        orderId,
+        orderItemId: item.id,
+        eventId,
+        ticketTypeId: item.ticketTypeId,
+        ticketCode: generateTicketCode(),
+        firstName: detail?.firstName ?? defaultFirstName ?? '',
+        lastName: detail?.lastName ?? defaultLastName ?? '',
+        email: detail?.email ?? defaultEmail ?? '',
+        phoneNumber: detail?.phoneNumber ?? defaultPhone ?? null,
+      });
+
+      detailIndex++;
+    }
+  }
+
+  return attendeeValues;
+}
+
+async function getAttendeeById(attendeeId: string) {
+  const [attendee] = await db
+    .select()
+    .from(attendees)
+    .where(eq(attendees.id, attendeeId))
+    .limit(1);
+
+  if (!attendee) {
+    throw new NotFoundError('Attendee record not found.');
+  }
+
+  return attendee;
+}
+
+// PUBLIC SERVICE FUNCTIONS
 
 /**
  * Creates one attendee record per ticket in the order.
- * attendeeDetails array is expected to be in the same order as
- * line items × quantity (i.e. for 2 GA + 1 VIP → 3 details in order: GA, GA, VIP).
- *
- * The caller validates that len(attendeeDetails) === sum(item.quantity).
+ * attendeeDetails array must match the total quantity across items.
  */
 export async function createAttendees(
   orderId: string,
@@ -34,50 +111,14 @@ export async function createAttendees(
   }>,
   attendeeDetails: AttendeeDetailInput[]
 ): Promise<void> {
-  // Build flat list of attendee records in item order
-  const attendeeValues: Array<{
-    orderId: string;
-    orderItemId: string;
-    eventId: string;
-    ticketTypeId: string;
-    ticketCode: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string | null;
-  }> = [];
+  const eventId = await getOrderEventId(orderId);
 
-  // Get eventId from order
-  const [order] = await db
-    .select({ eventId: orders.eventId })
-    .from(orders)
-    .where(eq(orders.id, orderId))
-    .limit(1);
-
-  if (!order) throw new NotFoundError('Order not found.');
-
-  let detailIndex = 0;
-
-  for (const item of items) {
-    for (let i = 0; i < item.quantity; i++) {
-      const detail = attendeeDetails[detailIndex];
-      if (!detail) break;
-
-      attendeeValues.push({
-        orderId,
-        orderItemId: item.id,
-        eventId: order.eventId,
-        ticketTypeId: item.ticketTypeId,
-        ticketCode: generateTicketCode(),
-        firstName: detail.firstName,
-        lastName: detail.lastName,
-        email: detail.email,
-        phoneNumber: detail.phoneNumber || null,
-      });
-
-      detailIndex++;
-    }
-  }
+  const attendeeValues = buildAttendeeValues(
+    orderId,
+    items,
+    attendeeDetails,
+    eventId
+  );
 
   if (attendeeValues.length > 0) {
     await db.insert(attendees).values(attendeeValues);
@@ -88,12 +129,7 @@ export async function createAttendees(
   }
 }
 
-// ─── Create attendees for free orders ─────────────────────────────────────────
-
-/**
- * For free orders, attendee details default to the purchaser's info.
- * Creates one attendee per ticket slot.
- */
+// For free orders, attendee details default to the purchaser's info.
 export async function createFreeOrderAttendees(
   orderId: string,
   customerName: string,
@@ -101,43 +137,33 @@ export async function createFreeOrderAttendees(
   customerPhone: string | null
 ): Promise<void> {
   const items = await queryOrderItems(orderId);
-
-  const [order] = await db
-    .select({ eventId: orders.eventId })
-    .from(orders)
-    .where(eq(orders.id, orderId))
-    .limit(1);
-
-  if (!order) throw new NotFoundError('Order not found.');
+  const eventId = await getOrderEventId(orderId);
 
   const nameParts = customerName.trim().split(' ');
   const firstName = nameParts[0] ?? customerName;
   const lastName = nameParts.slice(1).join(' ') || firstName;
 
-  const attendeeValues = [];
-  for (const item of items) {
-    for (let i = 0; i < item.quantity; i++) {
-      attendeeValues.push({
-        orderId,
-        orderItemId: item.id,
-        eventId: order.eventId,
-        ticketTypeId: item.ticketTypeId,
-        ticketCode: generateTicketCode(),
-        firstName,
-        lastName,
-        email: customerEmail,
-        phoneNumber: customerPhone,
-      });
-    }
-  }
+  const attendeeValues = buildAttendeeValues(
+    orderId,
+    items,
+    [], // no custom details for free orders
+    eventId,
+    firstName,
+    lastName,
+    customerEmail,
+    customerPhone
+  );
 
   if (attendeeValues.length > 0) {
     await db.insert(attendees).values(attendeeValues);
-    logger.info('Free order attendees created', { orderId, count: attendeeValues.length });
+    logger.info('Free order attendees created', {
+      orderId,
+      count: attendeeValues.length,
+    });
   }
 }
 
-// ─── Check in ─────────────────────────────────────────────────────────────────
+// Check in
 
 export async function checkInAttendee(
   ticketCode: string,
@@ -212,21 +238,18 @@ export async function checkInAttendee(
   };
 }
 
-// ─── Revoke ticket ────────────────────────────────────────────────────────────
+// Revoke ticket 
 
 export async function revokeTicket(
   attendeeId: string,
   reason: string,
   revokedBy: string
 ): Promise<void> {
-  const [attendee] = await db
-    .select()
-    .from(attendees)
-    .where(eq(attendees.id, attendeeId))
-    .limit(1);
+  const attendee = await getAttendeeById(attendeeId);
 
-  if (!attendee) throw new NotFoundError('Attendee record not found.');
-  if (attendee.isRevoked) throw new ConflictError('Ticket is already revoked.');
+  if (attendee.isRevoked) {
+    throw new ConflictError('Ticket is already revoked.');
+  }
 
   await db
     .update(attendees)
@@ -241,7 +264,7 @@ export async function revokeTicket(
   logger.info('Ticket revoked', { attendeeId, reason, revokedBy });
 }
 
-// ─── Update QR code ───────────────────────────────────────────────────────────
+// Update QR code
 
 export async function updateAttendeeQrCode(
   attendeeId: string,
