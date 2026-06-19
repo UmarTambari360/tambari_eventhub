@@ -27,7 +27,7 @@ async function apiFetch(
   });
 }
 
-// ─── Organizer mutations ──────────────────────────────────────────────────────
+// Organizer mutations 
 
 export async function createEventAction(
   input: CreateEventInput,
@@ -94,7 +94,8 @@ export async function publishEventAction(
     const data = (await res.json()) as { success: boolean; error?: { message: string } };
 
     if (!res.ok || !data.success) {
-      return { success: false, error: data.error?.message ?? 'Failed to update publish status' };
+      return { 
+        success: false, error: data.error?.message ?? 'Failed to update publish status' };
     }
 
     revalidatePath('/dashboard/events');
@@ -127,14 +128,15 @@ export async function cancelEventAction(
   }
 }
 
-// ─── Organizer reads ──────────────────────────────────────────────────────────
+// ─── Organizer reads 
 
 export async function getOrganizerEventsAction(
   accessToken: string,
   page = 1
 ): Promise<ActionResult<PaginatedResponse<OrganizerEventDTO>>> {
   try {
-    const res = await apiFetch(`/events/organizer/list?page=${page}&limit=20`, accessToken, {
+    const res = await apiFetch(
+      `/events/organizer/list?page=${page}&limit=20`, accessToken, {
       cache: 'no-store',
     });
 
@@ -179,9 +181,11 @@ export async function getOrganizerEventDetailAction(
   }
 }
 
-// ─── Public reads (Server Component helpers) ──────────────────────────────────
+// ─── Public reads (Server Component helpers) 
 
-export async function getPublishedEventsAction(params: Record<string, string> = {}): Promise<ActionResult<PaginatedResponse<EventListItemDTO>>> {
+export async function getPublishedEventsAction(
+  params: Record<string, string> = {}): 
+  Promise<ActionResult<PaginatedResponse<EventListItemDTO>>> {
   try {
     const qs = new URLSearchParams(params).toString();
     const res = await fetch(`${API_URL}/events?${qs}`, {
@@ -203,7 +207,8 @@ export async function getPublishedEventsAction(params: Record<string, string> = 
   }
 }
 
-export async function getEventBySlugAction(slug: string): Promise<ActionResult<EventDTO>> {
+export async function getEventBySlugAction(
+  slug: string): Promise<ActionResult<EventDTO>> {
   try {
     const res = await fetch(`${API_URL}/events/${slug}`, {
       next: { revalidate: 300 },

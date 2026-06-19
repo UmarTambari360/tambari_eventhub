@@ -16,6 +16,8 @@
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
+    "@bull-board/api": "^8.0.1",
+    "@bull-board/express": "^8.0.1",
     "@eventhub/types": "workspace:*",
     "@eventhub/validators": "workspace:*",
     "@react-email/components": "^0.0.31",

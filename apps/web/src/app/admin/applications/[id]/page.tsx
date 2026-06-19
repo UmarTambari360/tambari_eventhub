@@ -8,7 +8,7 @@ import {
   getApplicationDetailAction,
   approveApplicationAction,
   rejectApplicationAction,
-} from '@/actions/admin.actions';
+} from '@/actions/admin/applications.actions';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { formatDate } from '@/lib/utils';

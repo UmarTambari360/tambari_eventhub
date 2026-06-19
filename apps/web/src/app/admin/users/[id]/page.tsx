@@ -9,7 +9,7 @@ import {
   suspendUserAction,
   unsuspendUserAction,
   type AdminUserRow,
-} from '@/actions/admin.actions';
+} from '@/actions/admin/users.actions';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { formatDate, cn } from '@/lib/utils';
 

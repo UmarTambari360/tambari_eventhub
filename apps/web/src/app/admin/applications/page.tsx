@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
-import { getApplicationsAction } from '@/actions/admin.actions';
+import { getApplicationsAction } from '@/actions/admin/applications.actions';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import type { OrganizerApplicationDTO } from '@eventhub/types';

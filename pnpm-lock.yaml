@@ -20,6 +20,12 @@ importers:
 
   apps/api:
     dependencies:
+      '@bull-board/api':
+        specifier: ^8.0.1
+        version: 8.0.1(@bull-board/ui@8.0.1)
+      '@bull-board/express':
+        specifier: ^8.0.1
+        version: 8.0.1
       '@eventhub/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -281,6 +287,17 @@ packages:
   '@babel/runtime@7.29.2':
     resolution: {integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==}
     engines: {node: '>=6.9.0'}
+
+  '@bull-board/api@8.0.1':
+    resolution: {integrity: sha512-7FELJHRQPtjH9+r/DUArr4pDVU8r1yeDS9azQUzFtIbsUT5xGjyg5R1RB0I/RfwFfK5bqho/4cpzxJ/UnQjSKA==}
+    peerDependencies:
+      '@bull-board/ui': 8.0.1
+
+  '@bull-board/express@8.0.1':
+    resolution: {integrity: sha512-VOEhLNlaaVk3mBBoREXO/Dopzr9rKK5TpOGyaCbcnpzLKlrlwhj6BAeWWreB7/3Wu+pNnbKmrAhK8OOnYdzxLg==}
+
+  '@bull-board/ui@8.0.1':
+    resolution: {integrity: sha512-gKEGSD8dlUoWFGJJ4I4Q5bDtfB7yJwGfpgA2DVn1G1TzlUSN5n4fzzcGpLf5fS+QhR7tB/niydUiFRQ2zrjVrQ==}
 
   '@colors/colors@1.6.0':
     resolution: {integrity: sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA==}
@@ -2533,6 +2550,11 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
+  ejs@6.0.1:
+    resolution: {integrity: sha512-UaaM14yby8U3k02ihS1Bmj5Kz2d7CCQM1scxpgs4Mhkq8F1wR2gl3+Ts4h5Ne4Mnt7M9m4Dw7jsuMr3+xO4vZA==}
+    engines: {node: '>=0.12.18'}
+    hasBin: true
+
   electron-to-chromium@1.5.373:
     resolution: {integrity: sha512-G2Hym8JIf/QreuseqkDibgH8Ci8KfJzqGDKdakbhSx9UltwRBH2cBLAWU/lBX0sCdv0TlhyxQyDCnSfxgMWsjA==}
 
@@ -4159,6 +4181,9 @@ packages:
     resolution: {integrity: sha512-1qny3OExCf0UvUV/5wpYKf2YwPcOqXzkwKKSmKHiE6ZMQs5heeE/c8eXK+PNllPvmjgAbfnsbpkGZWy8cBpn9w==}
     engines: {node: '>=4'}
 
+  redis-info@3.1.0:
+    resolution: {integrity: sha512-ER4L9Sh/vm63DkIE0bkSjxluQlioBiBgf5w1UuldaW/3vPcecdljVDisZhmnCMvsxHNiARTTDDHGg9cGwTfrKg==}
+
   redis-parser@3.0.0:
     resolution: {integrity: sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==}
     engines: {node: '>=4'}
@@ -4937,6 +4962,24 @@ snapshots:
   '@alloc/quick-lru@5.2.0': {}
 
   '@babel/runtime@7.29.2': {}
+
+  '@bull-board/api@8.0.1(@bull-board/ui@8.0.1)':
+    dependencies:
+      '@bull-board/ui': 8.0.1
+      redis-info: 3.1.0
+
+  '@bull-board/express@8.0.1':
+    dependencies:
+      '@bull-board/api': 8.0.1(@bull-board/ui@8.0.1)
+      '@bull-board/ui': 8.0.1
+      ejs: 6.0.1
+      express: 5.2.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@bull-board/ui@8.0.1':
+    dependencies:
+      '@bull-board/api': 8.0.1(@bull-board/ui@8.0.1)
 
   '@colors/colors@1.6.0': {}
 
@@ -6723,6 +6766,8 @@ snapshots:
 
   ee-first@1.1.1: {}
 
+  ejs@6.0.1: {}
+
   electron-to-chromium@1.5.373: {}
 
   emoji-regex@8.0.0: {}
@@ -8436,6 +8481,10 @@ snapshots:
       strip-indent: 1.0.1
 
   redis-errors@1.2.0: {}
+
+  redis-info@3.1.0:
+    dependencies:
+      lodash: 4.18.1
 
   redis-parser@3.0.0:
     dependencies:

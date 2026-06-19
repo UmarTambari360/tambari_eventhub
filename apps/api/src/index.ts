@@ -5,12 +5,19 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 
-import { config, isDev } from './config/index.js';
+import { config, isDev, isProd } from './config/index.js';
 import { logger } from './lib/logger.js';
 import { getRedis, closeRedis } from './lib/redis.js';
 import { closeDb } from './db/index.js';
 import { requestIdMiddleware } from './middleware/requestId.middleware.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
+import {
+  apiLimiter,
+  publicApiLimiter,
+  adminLimiter,
+  webhookLimiter,
+} from './middleware/rate-limit.middleware.js';
+import { authenticate, requireRole } from './middleware/auth.middleware.js';
 import { healthRouter } from './routes/health.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { organizerRouter } from './routes/organizer.routes.js';
@@ -28,26 +35,53 @@ import { createExportWorker } from './jobs/workers/export.worker.js';
 
 const app: express.Application = express();
 
-// ─── Security ────────────────────────────────────────────────────────────────
+if (isProd) {
+  app.set('trust proxy', 1);
+}
 
-app.use(helmet());
+// ─── Security headers & CORS ──────────────────────────────────────────────────
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'res.cloudinary.com', '*.cloudinary.com'],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", 'data:'],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: isProd ? [] : null,
+      },
+    },
+    strictTransportSecurity: isProd
+      ? { maxAge: 31536000, includeSubDomains: true }
+      : false,
+  })
+);
+
+const allowedOrigins = isDev
+  ? ['http://localhost:3000', 'http://localhost:3001']
+  : [config.FRONTEND_URL];
 
 app.use(
   cors({
-    origin: isDev ? ['http://localhost:3000'] : [config.FRONTEND_URL],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS policy: origin ${origin} not allowed`));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
     exposedHeaders: ['X-Request-ID'],
+    maxAge: 86400,
   })
 );
 
-// ─── Request ID ───────────────────────────────────────────────────────────────
-
 app.use(requestIdMiddleware);
 
-// ─── Logging ──────────────────────────────────────────────────────────────────
-
+// ─── HTTP logging ─────────────────────────────────────────────────────────────
 app.use(
   morgan(isDev ? 'dev' : 'combined', {
     stream: {
@@ -59,34 +93,44 @@ app.use(
   })
 );
 
-// ─── Webhook route — MUST be before express.json() ───────────────────────────
-// Paystack webhooks require the raw body for HMAC-SHA512 signature validation.
-// express.raw() captures the raw Buffer; express.json() would parse it away.
-
+// ─── Webhook middleware (Must precede express.json) ───────────────────────────
 app.use(
   '/webhooks',
+  webhookLimiter,
   express.raw({ type: 'application/json' }),
   webhookRouter
 );
 
 // ─── Body Parsers ─────────────────────────────────────────────────────────────
-
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser(config.COOKIE_SECRET));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
-
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);
-app.use('/organizer', organizerRouter);
-app.use('/admin', adminRouter);
-app.use('/events', eventRouter);
-app.use('/upload', uploadRouter);
-app.use('/orders', orderRouter);
-app.use('/analytics', analyticsRouter);
 
-// 404 handler
+try {
+  const { createBullBoardRouter } = await import('./lib/bull-board.js');
+  app.use(
+    '/admin/queues',
+    adminLimiter,
+    authenticate,
+    requireRole('admin'),
+    createBullBoardRouter()
+  );
+  logger.info('Bull Board mounted at /admin/queues');
+} catch {
+  logger.warn('Bull Board packages not installed — /admin/queues unavailable.');
+}
+
+app.use('/events', publicApiLimiter, eventRouter);
+app.use('/organizer', apiLimiter, organizerRouter);
+app.use('/orders', apiLimiter, orderRouter);
+app.use('/upload', apiLimiter, uploadRouter);
+app.use('/analytics', apiLimiter, analyticsRouter);
+app.use('/admin', adminLimiter, adminRouter);
+
 app.use((_req, res) => {
   res.status(404).json({
     success: false,
@@ -97,25 +141,26 @@ app.use((_req, res) => {
   });
 });
 
-// Global error handler — must be last
 app.use(errorMiddleware);
 
-// ─── Startup ──────────────────────────────────────────────────────────────────
-
+// ─── Startup & Lifecycle ──────────────────────────────────────────────────────
 async function start(): Promise<void> {
   try {
     await getRedis().connect();
   } catch {
-    // Redis failure is non-fatal at startup
+    logger.warn('Redis connection failed at startup — proceeding without cache');
   }
 
-  // Start background workers
-  createEmailWorker();
-  createWebhookWorker();
-  createCleanupWorker();
-  createQrCodeWorker();
-  createExportWorker();
-  logger.info('Background workers started');
+  if (!isProd) {
+    createEmailWorker();
+    createWebhookWorker();
+    createCleanupWorker();
+    createQrCodeWorker();
+    createExportWorker();
+    logger.info('In-process BullMQ workers started (development mode)');
+  } else {
+    logger.info('Production mode: BullMQ workers should run as a separate service');
+  }
 
   const server = app.listen(config.PORT, () => {
     logger.info('API server started', {
@@ -144,6 +189,16 @@ async function start(): Promise<void> {
 
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
+
+  process.on('uncaughtException', (err) => {
+    logger.error('Uncaught exception', { error: err.message, stack: err.stack });
+  });
+
+  process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled rejection', {
+      reason: reason instanceof Error ? reason.message : String(reason),
+    });
+  });
 }
 
 start().catch((err) => {

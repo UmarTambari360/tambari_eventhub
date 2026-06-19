@@ -79,10 +79,15 @@ export async function getDashboardStatsAction(
   accessToken: string
 ): Promise<ActionResult<DashboardStats>> {
   try {
-    const res = await apiFetch('/analytics/dashboard', accessToken, { cache: 'no-store' });
-    const data = (await res.json()) as { success: boolean; data?: DashboardStats; error?: { message: string } };
+    const res = await apiFetch(
+      '/analytics/dashboard', accessToken, { cache: 'no-store' });
+    const data = (await res.json()) as { 
+      success: boolean; 
+      data?: DashboardStats; 
+      error?: { message: string } };
     if (!res.ok || !data.success || !data.data) {
-      return { success: false, error: data.error?.message ?? 'Failed to load stats' };
+      return { 
+        success: false, error: data.error?.message ?? 'Failed to load stats' };
     }
     return { success: true, data: data.data };
   } catch {
@@ -95,10 +100,14 @@ export async function getMonthlyRevenueAction(
   months = 12
 ): Promise<ActionResult<MonthlyRevenueStat[]>> {
   try {
-    const res = await apiFetch(`/analytics/revenue?months=${months}`, accessToken, {
+    const res = await apiFetch(
+      `/analytics/revenue?months=${months}`, accessToken, {
       next: { revalidate: 300 },
     });
-    const data = (await res.json()) as { success: boolean; data?: MonthlyRevenueStat[]; error?: { message: string } };
+    const data = (await res.json()) as { 
+      success: boolean; 
+      data?: MonthlyRevenueStat[]; 
+      error?: { message: string } };
     if (!res.ok || !data.success || !data.data) {
       return { success: false, error: 'Failed to load revenue data' };
     }
@@ -113,8 +122,12 @@ export async function getEventTicketStatsAction(
   accessToken: string
 ): Promise<ActionResult<{ ticketStats: TicketTypeStat[] }>> {
   try {
-    const res = await apiFetch(`/analytics/events/${eventId}`, accessToken, { cache: 'no-store' });
-    const data = (await res.json()) as { success: boolean; data?: { ticketStats: TicketTypeStat[] }; error?: { message: string } };
+    const res = await apiFetch(
+      `/analytics/events/${eventId}`, accessToken, { cache: 'no-store' });
+    const data = (await res.json()) as { 
+      success: boolean; 
+      data?: { ticketStats: TicketTypeStat[] }; 
+      error?: { message: string } };
     if (!res.ok || !data.success || !data.data) {
       return { success: false, error: 'Failed to load event stats' };
     }
@@ -133,7 +146,8 @@ export async function getEventAttendeesAction(
   try {
     const params = new URLSearchParams({ page: String(page), limit: '20' });
     if (search) params.set('search', search);
-    const res = await apiFetch(`/analytics/events/${eventId}/attendees?${params.toString()}`, accessToken, {
+    const res = await apiFetch(
+      `/analytics/events/${eventId}/attendees?${params.toString()}`, accessToken, {
       cache: 'no-store',
     });
     const data = (await res.json()) as {
@@ -158,7 +172,8 @@ export async function getOrganizerOrdersAction(
   try {
     const params = new URLSearchParams({ page: String(page), limit: '20' });
     if (status) params.set('status', status);
-    const res = await apiFetch(`/analytics/orders?${params.toString()}`, accessToken, {
+    const res = await apiFetch(
+      `/analytics/orders?${params.toString()}`, accessToken, {
       cache: 'no-store',
     });
     const data = (await res.json()) as {
@@ -181,7 +196,8 @@ export async function checkInAttendeeAction(
   accessToken: string
 ): Promise<ActionResult<{ success: boolean; attendeeName: string; message: string }>> {
   try {
-    const res = await apiFetch(`/orders/check-in?eventId=${eventId}`, accessToken, {
+    const res = await apiFetch(
+      `/orders/check-in?eventId=${eventId}`, accessToken, {
       method: 'POST',
       body: JSON.stringify({ ticketCode }),
     });
@@ -205,13 +221,16 @@ export async function revokeTicketAction(
   accessToken: string
 ): Promise<ActionResult> {
   try {
-    const res = await apiFetch(`/orders/attendees/${attendeeId}/revoke`, accessToken, {
+    const res = await apiFetch(
+      `/orders/attendees/${attendeeId}/revoke`, accessToken, {
       method: 'POST',
       body: JSON.stringify({ reason }),
     });
-    const data = (await res.json()) as { success: boolean; error?: { message: string } };
+    const data = (await res.json()) as { 
+      success: boolean; error?: { message: string } };
     if (!res.ok || !data.success) {
-      return { success: false, error: data.error?.message ?? 'Revoke failed' };
+      return { 
+        success: false, error: data.error?.message ?? 'Revoke failed' };
     }
     return { success: true };
   } catch {

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { getAdminOrdersAction, type AdminOrderRow } from '@/actions/admin.actions';
+import { getAdminOrdersAction, type AdminOrderRow } from '@/actions/admin/orders.actions';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { formatDate, formatNaira, cn } from '@/lib/utils';

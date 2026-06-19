@@ -26,7 +26,7 @@ import {
   type PlatformKPIs,
   type MonthlyRevenuePoint,
   type TopOrganizer,
-} from '@/actions/admin.actions';
+} from '@/actions/admin/index';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { formatNaira, cn } from '@/lib/utils';
 

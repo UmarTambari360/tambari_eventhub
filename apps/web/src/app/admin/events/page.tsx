@@ -9,7 +9,7 @@ import {
   featureEventAction,
   cancelAdminEventAction,
   type AdminEventRow,
-} from '@/actions/admin.actions';
+} from '@/actions/admin/events.actions';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { formatDate, cn } from '@/lib/utils';
 

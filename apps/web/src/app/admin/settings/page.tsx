@@ -7,7 +7,7 @@ import {
   getAdminSettingsAction,
   updateSettingAction,
   type PlatformSettingsDTO,
-} from '@/actions/admin.actions';
+} from '@/actions/admin/settings.actions';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 export default function AdminSettingsPage() {

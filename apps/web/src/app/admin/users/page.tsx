@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { getUsersAction, type AdminUserRow } from '@/actions/admin.actions';
+import { getUsersAction, type AdminUserRow } from '@/actions/admin/users.actions';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { formatDate, cn } from '@/lib/utils';
 

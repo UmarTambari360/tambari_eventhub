@@ -31,7 +31,7 @@ async function apiFetch(
   });
 }
 
-// ─── Create order ─────────────────────────────────────────────────────────────
+// Create order 
 
 export async function createOrderAction(
   input: CreateOrderInput,
@@ -62,7 +62,7 @@ export async function createOrderAction(
   }
 }
 
-// ─── Initialize payment ───────────────────────────────────────────────────────
+// Initialize payment 
 
 export interface AttendeeInput {
   ticketTypeId: string;
@@ -102,7 +102,7 @@ export async function initializePaymentAction(
   }
 }
 
-// ─── Get order ────────────────────────────────────────────────────────────────
+// Get order 
 
 export async function getOrderAction(
   orderNumber: string,

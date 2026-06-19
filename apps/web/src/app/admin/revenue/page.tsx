@@ -9,7 +9,7 @@ import {
   type MonthlyRevenuePoint,
   type RevenueByOrganizer,
   type RevenueByEvent,
-} from '@/actions/admin.actions';
+} from '@/actions/admin/revenue.actions';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { formatNaira, formatDate } from '@/lib/utils';
 import Link from 'next/link';
