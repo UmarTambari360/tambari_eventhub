@@ -10,57 +10,53 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Primary violet scale
+        // Primary - Warm Emerald (replaces violet)
         primary: {
-          50:  '#F5F3FF',
-          100: '#EDE9FE',
-          200: '#DDD6FE',
-          300: '#C4B5FD',
-          400: '#A78BFA',
-          500: '#8B5CF6',
-          600: '#7C3AED',
-          700: '#6D28D9',
-          800: '#5B21B6',
-          900: '#4C1D95',
-          950: '#2E1065',
+          50:  '#F0F9F6',
+          100: '#D1F0E8',
+          200: '#A3E0D3',
+          300: '#6BC8B8',
+          400: '#3AA38F',
+          500: '#0F766E',
+          600: '#0F5F5A',
+          700: '#0C4A46',
+          800: '#093632',
+          900: '#062421',
+          950: '#031211',
         },
-        // Accent amber scale
+        // Accent - Warm Gold (replaces bright amber)
         accent: {
-          50:  '#FFFBEB',
-          100: '#FEF3C7',
-          200: '#FDE68A',
-          300: '#FCD34D',
-          400: '#FBBF24',
-          500: '#F59E0B',
-          600: '#D97706',
-          700: '#B45309',
+          50:  '#FFF9EB',
+          100: '#FFF0C7',
+          200: '#FFDF8A',
+          300: '#FFC74D',
+          400: '#F5A623',
+          500: '#D97706',
+          600: '#B45309',
+          700: '#92400E',
         },
-        // Semantic surface tokens — map to CSS variables
+        // Semantic surface tokens — map to CSS variables (unchanged structure)
         surface: {
           DEFAULT:  'var(--surface)',
           raised:   'var(--surface-raised)',
           overlay:  'var(--surface-overlay)',
           sunken:   'var(--surface-sunken)',
         },
-        // Border tokens
         border: {
           DEFAULT: 'var(--border)',
           strong:  'var(--border-strong)',
         },
-        // Text tokens
         text: {
           primary:   'var(--text-primary)',
           secondary: 'var(--text-secondary)',
           muted:     'var(--text-muted)',
           inverted:  'var(--text-inverted)',
         },
-        // Brand tokens (single values — not scales)
         brand: {
           DEFAULT: 'var(--primary)',
           hover:   'var(--primary-hover)',
           light:   'var(--primary-light)',
         },
-        // Status tokens
         success: {
           DEFAULT: 'var(--success)',
           light:   'var(--success-light)',

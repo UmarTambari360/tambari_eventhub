@@ -85,11 +85,14 @@ export async function getDashboardStatsAction(
       success: boolean; 
       data?: DashboardStats; 
       error?: { message: string } };
+
     if (!res.ok || !data.success || !data.data) {
       return { 
         success: false, error: data.error?.message ?? 'Failed to load stats' };
     }
+
     return { success: true, data: data.data };
+
   } catch {
     return { success: false, error: 'Network error' };
   }
@@ -104,14 +107,18 @@ export async function getMonthlyRevenueAction(
       `/analytics/revenue?months=${months}`, accessToken, {
       next: { revalidate: 300 },
     });
+
     const data = (await res.json()) as { 
       success: boolean; 
       data?: MonthlyRevenueStat[]; 
       error?: { message: string } };
+
     if (!res.ok || !data.success || !data.data) {
       return { success: false, error: 'Failed to load revenue data' };
     }
+
     return { success: true, data: data.data };
+
   } catch {
     return { success: false, error: 'Network error' };
   }
@@ -124,14 +131,18 @@ export async function getEventTicketStatsAction(
   try {
     const res = await apiFetch(
       `/analytics/events/${eventId}`, accessToken, { cache: 'no-store' });
+
     const data = (await res.json()) as { 
       success: boolean; 
       data?: { ticketStats: TicketTypeStat[] }; 
       error?: { message: string } };
+
     if (!res.ok || !data.success || !data.data) {
       return { success: false, error: 'Failed to load event stats' };
     }
+
     return { success: true, data: data.data };
+
   } catch {
     return { success: false, error: 'Network error' };
   }
@@ -145,20 +156,25 @@ export async function getEventAttendeesAction(
 ): Promise<ActionResult<{ items: EventAttendee[]; total: number; totalPages: number }>> {
   try {
     const params = new URLSearchParams({ page: String(page), limit: '20' });
+
     if (search) params.set('search', search);
     const res = await apiFetch(
       `/analytics/events/${eventId}/attendees?${params.toString()}`, accessToken, {
       cache: 'no-store',
     });
+
     const data = (await res.json()) as {
       success: boolean;
       data?: { items: EventAttendee[]; total: number; totalPages: number };
       error?: { message: string };
     };
+
     if (!res.ok || !data.success || !data.data) {
       return { success: false, error: 'Failed to load attendees' };
     }
+
     return { success: true, data: data.data };
+
   } catch {
     return { success: false, error: 'Network error' };
   }
@@ -171,19 +187,24 @@ export async function getOrganizerOrdersAction(
 ): Promise<ActionResult<{ items: OrganizerOrder[]; total: number; totalPages: number }>> {
   try {
     const params = new URLSearchParams({ page: String(page), limit: '20' });
+
     if (status) params.set('status', status);
+
     const res = await apiFetch(
       `/analytics/orders?${params.toString()}`, accessToken, {
       cache: 'no-store',
     });
+
     const data = (await res.json()) as {
       success: boolean;
       data?: { items: OrganizerOrder[]; total: number; totalPages: number };
       error?: { message: string };
     };
+
     if (!res.ok || !data.success || !data.data) {
       return { success: false, error: 'Failed to load orders' };
     }
+
     return { success: true, data: data.data };
   } catch {
     return { success: false, error: 'Network error' };
@@ -201,14 +222,17 @@ export async function checkInAttendeeAction(
       method: 'POST',
       body: JSON.stringify({ ticketCode }),
     });
+
     const data = (await res.json()) as {
       success: boolean;
       data?: { success: boolean; attendeeName: string; message: string };
       error?: { message: string };
     };
+
     if (!res.ok || !data.data) {
       return { success: false, error: data.error?.message ?? 'Check-in failed' };
     }
+
     return { success: true, data: data.data };
   } catch {
     return { success: false, error: 'Network error' };
@@ -226,13 +250,17 @@ export async function revokeTicketAction(
       method: 'POST',
       body: JSON.stringify({ reason }),
     });
+
     const data = (await res.json()) as { 
       success: boolean; error?: { message: string } };
+
     if (!res.ok || !data.success) {
       return { 
         success: false, error: data.error?.message ?? 'Revoke failed' };
     }
+
     return { success: true };
+    
   } catch {
     return { success: false, error: 'Network error' };
   }

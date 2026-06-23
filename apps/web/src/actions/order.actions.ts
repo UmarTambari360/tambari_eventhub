@@ -132,7 +132,7 @@ export async function getOrderAction(
   }
 }
 
-// ─── Verify payment ───────────────────────────────────────────────────────────
+// Verify payment 
 
 export async function verifyPaymentAction(
   orderNumber: string,
@@ -162,7 +162,7 @@ export async function verifyPaymentAction(
   }
 }
 
-// ─── Get user orders ──────────────────────────────────────────────────────────
+// Get user orders
 
 export async function getUserOrdersAction(
   accessToken: string,

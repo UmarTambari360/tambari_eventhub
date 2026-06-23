@@ -44,9 +44,7 @@ export async function uploadEventBannerAction(
   }
 }
 
-/**
- * Upload an event thumbnail image.
- */
+
 export async function uploadEventThumbnailAction(
   formData: FormData,
   accessToken: string
@@ -74,9 +72,7 @@ export async function uploadEventThumbnailAction(
   }
 }
 
-/**
- * Upload a user avatar.
- */
+
 export async function uploadAvatarAction(
   formData: FormData,
   accessToken: string
@@ -104,10 +100,8 @@ export async function uploadAvatarAction(
   }
 }
 
-/**
- * Delete a Cloudinary asset by its publicId.
- * The publicId is base64url-encoded for safe URL transmission.
- */
+//Delete a Cloudinary asset by its publicId.
+//The publicId is base64url-encoded for safe URL transmission.
 export async function deleteAssetAction(
   publicId: string,
   accessToken: string

@@ -33,7 +33,7 @@ export function EventCard({ event }: EventCardProps) {
     >
       <Link href={`/events/${event.slug}`} className="block">
         {/* Image */}
-        <div className="relative h-44 bg-(--surface-sunken) overflow-hidden">
+        <div className="relative h-44 bg-surface-sunken overflow-hidden">
           {(event.thumbnailUrl ?? event.bannerImageUrl) ? (
             <Image
               src={(event.thumbnailUrl ?? event.bannerImageUrl)!}
@@ -42,13 +42,13 @@ export function EventCard({ event }: EventCardProps) {
             />
           ) : (
             <div className="flex items-center justify-center h-full">
-              <span className="text-4xl opacity-30">🎪</span>
+              <span className="text-4xl opacity-30"></span>
             </div>
           )}
 
           {/* Category pill */}
           {event.category && (
-            <span className="absolute top-3 left-3 badge badge-neutral backdrop-blur-sm bg-(--surface-overlay)/90">
+            <span className="absolute top-3 left-3 badge badge-neutral backdrop-blur-sm bg-surface-overlay/90">
               {event.category}
             </span>
           )}
@@ -73,17 +73,17 @@ export function EventCard({ event }: EventCardProps) {
 
         {/* Content */}
         <div className="p-4">
-          <h3 className="heading-sm text-(--text-primary) mb-2 line-clamp-2 group-hover:text-(--primary) transition-colors">
+          <h3 className="heading-sm text-text-primary mb-2 line-clamp-2 group-hover:text-brand transition-colors">
             {event.title}
           </h3>
 
           <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5 caption text-(--text-muted)">
-              <Calendar className="h-3.5 w-3.5 shrink-0 text-(--primary)" />
+            <div className="flex items-center gap-1.5 caption text-text-muted">
+              <Calendar className="h-3.5 w-3.5 shrink-0 text-brand" />
               <span className="truncate">{formattedDate}</span>
             </div>
-            <div className="flex items-center gap-1.5 caption text-(--text-muted)">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-(--primary)" />
+            <div className="flex items-center gap-1.5 caption text-text-muted">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-brand" />
               <span className="truncate">
                 {event.venue}, {event.location}
               </span>

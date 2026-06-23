@@ -35,8 +35,8 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white text-sm font-black">
-              E
+            <div className="flex h-8 w-15 items-center justify-center rounded-lg bg-primary-600 text-white text-sm font-black">
+              Tambari
             </div>
             <span className="text-lg font-bold text-(--text-primary) hidden sm:block">
               EventHub

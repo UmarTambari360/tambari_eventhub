@@ -110,20 +110,6 @@ app.use(cookieParser(config.COOKIE_SECRET));
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);
 
-try {
-  const { createBullBoardRouter } = await import('./lib/bull-board.js');
-  app.use(
-    '/admin/queues',
-    adminLimiter,
-    authenticate,
-    requireRole('admin'),
-    createBullBoardRouter()
-  );
-  logger.info('Bull Board mounted at /admin/queues');
-} catch {
-  logger.warn('Bull Board packages not installed — /admin/queues unavailable.');
-}
-
 app.use('/events', publicApiLimiter, eventRouter);
 app.use('/organizer', apiLimiter, organizerRouter);
 app.use('/orders', apiLimiter, orderRouter);

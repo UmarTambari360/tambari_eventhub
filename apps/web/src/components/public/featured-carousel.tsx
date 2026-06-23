@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar, MapPin } from 'lucide-react';
 import { formatDate, formatNaira } from '@/lib/utils';
@@ -24,6 +25,7 @@ export function FeaturedCarousel({ events }: FeaturedCarouselProps) {
     intervalRef.current = setInterval(() => {
       setCurrent((c) => (c + 1) % count);
     }, 5000);
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -56,14 +58,14 @@ export function FeaturedCarousel({ events }: FeaturedCarouselProps) {
       >
         {/* Background */}
         {event.bannerImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={event.bannerImageUrl}
             alt={event.title}
+            fill
             className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
-          <div className="absolute inset-0 bg-linear-to-br from-violet-600 to-indigo-700" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary-700 to-primary-900" />
         )}
 
         {/* Overlay */}
@@ -72,7 +74,7 @@ export function FeaturedCarousel({ events }: FeaturedCarouselProps) {
         {/* Content */}
         <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
           {event.category && (
-            <span className="inline-block rounded-full bg-violet-500 px-3 py-1 text-xs font-semibold text-white mb-3">
+            <span className="inline-block rounded-full bg-primary-500 px-3 py-1 text-xs font-semibold text-white mb-3">
               {event.category}
             </span>
           )}
@@ -103,7 +105,7 @@ export function FeaturedCarousel({ events }: FeaturedCarouselProps) {
           </div>
           <Link
             href={`/events/${event.slug}`}
-            className="inline-block rounded-xl bg-white px-6 py-3 text-sm font-semibold text-gray-900 hover:bg-violet-50 transition-colors"
+            className="inline-block rounded-xl bg-white px-6 py-3 text-sm font-semibold text-gray-900 hover:bg-primary-50 transition-colors"
           >
             Get Tickets →
           </Link>
