@@ -19,6 +19,7 @@ import {
   submitApplicationSchema, 
   verifyBankAccountSchema }          from '@eventhub/validators';
 import type { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { logger } from '@/lib/logger.js';
 
 const router: ExpressRouter = Router();
 
@@ -44,7 +45,7 @@ router.post(
       accountNumber: string;
       bankCode: string;
     };
-
+    logger.info('verify-bank called with', { accountNumber, bankCode });
     const result = await verifyBankAccount(accountNumber, bankCode);
 
     res.json({

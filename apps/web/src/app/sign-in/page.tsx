@@ -8,8 +8,6 @@ import { Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../providers/auth-provider';
 import { ApiError } from '../../lib/api-client';
 import { loginSchema, type LoginInput } from '@eventhub/validators';
-
-// Shadcn UI components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
