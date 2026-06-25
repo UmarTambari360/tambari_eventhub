@@ -22,10 +22,3 @@ export async function adminFetch(
     },
   });
 }
-
-export * from './applications.actions';
-export * from './events.actions';
-export * from './orders.actions';
-export * from './users.actions';
-export * from './revenue.actions';
-export * from './settings.actions';

@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 const CATEGORIES = [
   'Music',
@@ -42,11 +43,10 @@ export function CategoryFilterBar() {
             key={cat ?? 'all'}
             onClick={() => handleSelect(cat)}
             className={cn(
-              'shrink-0 rounded-full px-4 py-1.5 caption font-semibold transition-all whitespace-nowrap',
-              'border',
+              'shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-all whitespace-nowrap border',
               active
-                ? 'bg-(--primary) border-(--primary) text-white'
-                : 'border-(--border) text-(--text-muted) hover:border-(--primary) hover:text-(--primary) bg-(--surface)'
+                ? 'bg-primary-600 text-white border-primary-600 hover:bg-primary-700'
+                : 'bg-surface text-text-secondary border-border hover:border-primary-300 hover:text-primary-600'
             )}
           >
             {cat ?? 'All Events'}

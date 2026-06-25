@@ -7,6 +7,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { getUserOrdersAction } from '@/actions/order.actions';
 import { formatDate, formatNaira, cn } from '@/lib/utils';
 import type { OrderListItemDTO, OrderStatus } from '@eventhub/types';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 export default function MyTicketsPage() {
   const auth = useAuth();
@@ -32,12 +35,14 @@ export default function MyTicketsPage() {
   if (!auth?.user) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="text-center">
-          <p className="heading-lg text-(--text-primary) mb-2">Sign in to view your tickets</p>
-          <Link href="/sign-in?next=/my-tickets" className="btn btn-primary btn-md">
-            Sign in
-          </Link>
-        </div>
+        <Card className="max-w-md w-full text-center p-8 border-border">
+          <CardContent className="pt-6">
+            <p className="heading-lg text-text-primary mb-2">Sign in to view your tickets</p>
+            <Button asChild className="btn-primary">
+              <Link href="/sign-in?next=/my-tickets">Sign in</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -45,96 +50,105 @@ export default function MyTicketsPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <div className="mb-6">
-        <h1 className="heading-xl text-(--text-primary)">My Tickets</h1>
-        <p className="body-sm text-(--text-muted) mt-1">
+        <h1 className="heading-xl text-text-primary">My Tickets</h1>
+        <p className="body-sm text-text-muted mt-1">
           All your event registrations and ticket orders
         </p>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
         </div>
       ) : orders.length === 0 ? (
-        <div className="card border-dashed p-16 text-center">
-          <Ticket className="mx-auto h-10 w-10 text-(--text-muted) mb-4" />
-          <p className="heading-sm text-(--text-primary) mb-1">No tickets yet</p>
-          <p className="body-sm text-(--text-muted) mb-6">
-            Browse events and get your first ticket
-          </p>
-          <Link href="/events" className="btn btn-primary btn-md">
-            Browse Events
-          </Link>
-        </div>
+        <Card className="border-dashed border-2 border-border p-16 text-center">
+          <CardContent className="pt-6">
+            <Ticket className="mx-auto h-10 w-10 text-text-muted mb-4" />
+            <p className="heading-sm text-text-primary mb-1">No tickets yet</p>
+            <p className="body-sm text-text-muted mb-6">Browse events and get your first ticket</p>
+            <Button asChild className="btn-primary">
+              <Link href="/events">Browse Events</Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-3">
           {orders.map((order) => (
             <Link
               key={order.id}
               href={`/orders/${order.orderNumber}`}
-              className="card p-5 flex items-center gap-4 hover:border-violet-200 hover:shadow-card-md transition-all group"
+              className="block transition-all group"
             >
-              {/* Thumbnail */}
-              <div className="h-16 w-16 shrink-0 rounded-xl bg-(--surface-sunken) overflow-hidden">
-                {order.event.thumbnailUrl ? (
-                  <img
-                    src={order.event.thumbnailUrl}
-                    alt={order.event.title}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-2xl">🎪</div>
-                )}
-              </div>
+              <Card className="p-5 hover:border-primary-200 hover:shadow-card-md transition-all border-border">
+                <CardContent className="p-0 flex items-center gap-4">
+                  {/* Thumbnail */}
+                  <div className="h-16 w-16 shrink-0 rounded-xl bg-surface-sunken overflow-hidden">
+                    {order.event.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={order.event.thumbnailUrl}
+                        alt={order.event.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-2xl">🎪</div>
+                    )}
+                  </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="heading-sm text-(--text-primary) truncate group-hover:text-violet-700 transition-colors">
-                    {order.event.title}
-                  </p>
-                  <OrderStatusPill status={order.status} />
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-3 body-sm text-(--text-muted)">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5" />
-                    {formatDate(order.event.eventDate, {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </span>
-                  <span className="font-medium text-(--primary)">
-                    {order.isFreeOrder ? 'FREE' : formatNaira(order.totalAmount)}
-                  </span>
-                  <span className="font-mono text-xs text-(--text-muted)">{order.orderNumber}</span>
-                </div>
-              </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="heading-sm text-text-primary truncate group-hover:text-primary-700 transition-colors">
+                        {order.event.title}
+                      </p>
+                      <OrderStatusBadge status={order.status} />
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-3 body-sm text-text-muted">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {formatDate(order.event.eventDate, {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </span>
+                      <span className="font-medium text-brand">
+                        {order.isFreeOrder ? 'FREE' : formatNaira(order.totalAmount)}
+                      </span>
+                      <span className="font-mono text-xs text-text-muted">{order.orderNumber}</span>
+                    </div>
+                  </div>
 
-              <ChevronRight className="h-4 w-4 text-(--text-muted) shrink-0 group-hover:text-violet-600 transition-colors" />
+                  <ChevronRight className="h-4 w-4 text-text-muted shrink-0 group-hover:text-primary-600 transition-colors" />
+                </CardContent>
+              </Card>
             </Link>
           ))}
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="pt-4 flex justify-center gap-3">
-              <button
+            <div className="pt-4 flex justify-center gap-3 items-center">
+              <Button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="btn btn-ghost btn-sm disabled:opacity-40"
+                variant="outline"
+                size="sm"
+                className="border-border text-text-secondary hover:bg-surface-raised"
               >
                 Previous
-              </button>
-              <span className="body-sm text-(--text-muted) py-1.5">
+              </Button>
+              <span className="body-sm text-text-muted">
                 {page} / {totalPages}
               </span>
-              <button
+              <Button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="btn btn-ghost btn-sm disabled:opacity-40"
+                variant="outline"
+                size="sm"
+                className="border-border text-text-secondary hover:bg-surface-raised"
               >
                 Next
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -143,15 +157,34 @@ export default function MyTicketsPage() {
   );
 }
 
-function OrderStatusPill({ status }: { status: OrderStatus }) {
-  const config: Record<OrderStatus, { label: string; cls: string }> = {
-    pending: { label: 'Pending', cls: 'badge badge-warning' },
-    processing: { label: 'Processing', cls: 'badge badge-primary' },
-    paid: { label: 'Confirmed', cls: 'badge badge-success' },
-    failed: { label: 'Failed', cls: 'badge badge-danger' },
-    cancelled: { label: 'Cancelled', cls: 'badge badge-neutral' },
-    refunded: { label: 'Refunded', cls: 'badge badge-info' },
+function OrderStatusBadge({ status }: { status: OrderStatus }) {
+  const config: Record<
+    OrderStatus,
+    {
+      label: string;
+      variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
+    }
+  > = {
+    pending: { label: 'Pending', variant: 'warning' },
+    processing: { label: 'Processing', variant: 'secondary' },
+    paid: { label: 'Confirmed', variant: 'success' },
+    failed: { label: 'Failed', variant: 'destructive' },
+    cancelled: { label: 'Cancelled', variant: 'outline' },
+    refunded: { label: 'Refunded', variant: 'secondary' },
   };
-  const { label, cls } = config[status];
-  return <span className={cn(cls, 'shrink-0')}>{label}</span>;
+
+  const { label, variant } = config[status];
+
+  return (
+    <Badge
+      variant={variant === 'success' || variant === 'warning' ? 'default' : variant}
+      className={cn(
+        'shrink-0',
+        variant === 'success' && 'bg-success text-white hover:bg-success/90 border-success',
+        variant === 'warning' && 'bg-warning text-white hover:bg-warning/90 border-warning'
+      )}
+    >
+      {label}
+    </Badge>
+  );
 }

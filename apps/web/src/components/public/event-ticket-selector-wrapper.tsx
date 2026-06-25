@@ -46,10 +46,8 @@ export function EventTicketSelectorWrapper({ event }: Props) {
     const { orderId, orderNumber, isFreeOrder } = result.data;
 
     if (isFreeOrder) {
-      // Free orders are immediately completed — go straight to confirmation
       router.push(`/orders/${orderNumber}`);
     } else {
-      // Paid orders go to checkout for attendee details + Paystack redirect
       router.push(`/checkout/${orderId}`);
     }
   }

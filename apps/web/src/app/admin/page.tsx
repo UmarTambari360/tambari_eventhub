@@ -19,14 +19,14 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useAuth } from '@/hooks/use-auth';
-import {
+import { 
   getPlatformKPIsAction,
   getRevenueChartAction,
-  getTopOrganizersAction,
-  type PlatformKPIs,
-  type MonthlyRevenuePoint,
-  type TopOrganizer,
-} from '@/actions/admin/index';
+  MonthlyRevenuePoint
+} from '@/actions/admin/revenue.actions'
+import type { 
+  PlatformKPIs, 
+  TopOrganizer }        from '@/actions/admin/revenue.actions';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { formatNaira, cn } from '@/lib/utils';
 
@@ -323,3 +323,7 @@ function KpiCard({
     </div>
   );
 }
+function getTopOrganizersAction(arg0: string): any {
+  throw new Error('Function not implemented.');
+}
+

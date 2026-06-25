@@ -6,6 +6,8 @@ import { EventTicketSelectorWrapper } from '@/components/public/event-ticket-sel
 import { AddToCalendar } from '@/components/public/add-to-calendar';
 import { SocialShare } from '@/components/public/social-share';
 import { formatDate } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface EventDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -71,18 +73,13 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     timeZone: 'Africa/Lagos',
   }).format(new Date(event.eventDate));
 
-  // const eventUrl =
-    // typeof window === 'undefined'
-      // ? `https://eventhub.ng/events/${event.slug}`
-      // : `${window.location.origin}/events/${event.slug}`;
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Main content */}
         <div className="lg:col-span-2">
           {/* Banner */}
-          <div className="relative mb-6 h-72 md:h-96 rounded-2xl overflow-hidden bg-gradient-to-br from-violet-100 to-indigo-100">
+          <div className="relative mb-6 h-72 md:h-96 rounded-2xl overflow-hidden bg-gradient-to-br from-primary-100 to-primary-200">
             {event.bannerImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -96,36 +93,36 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
             {event.isCancelled && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span className="rounded-2xl bg-red-500 px-6 py-2 text-lg font-bold text-white">
+                <Badge variant="destructive" className="text-lg px-6 py-2">
                   This Event Has Been Cancelled
-                </span>
+                </Badge>
               </div>
             )}
 
             {event.isFeatured && !event.isCancelled && (
-              <span className="absolute top-4 left-4 rounded-full bg-amber-400 px-3 py-1 text-xs font-semibold text-amber-900">
+              <Badge className="absolute top-4 left-4 bg-accent-500 text-white hover:bg-accent-600">
                 ⭐ Featured
-              </span>
+              </Badge>
             )}
           </div>
 
           {/* Category + tags */}
           <div className="flex flex-wrap gap-2 mb-4">
             {event.category && (
-              <span className="rounded-full bg-violet-100 text-violet-700 px-3 py-1 text-xs font-medium">
+              <Badge variant="secondary" className="bg-primary-100 text-primary-700">
                 {event.category}
-              </span>
+              </Badge>
             )}
             {event.tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-gray-100 text-gray-600 px-3 py-1 text-xs">
+              <Badge key={tag} variant="outline" className="border-border text-text-secondary">
                 #{tag}
-              </span>
+              </Badge>
             ))}
           </div>
 
           {/* Title + share */}
           <div className="flex items-start justify-between gap-4 mb-6">
-            <h1 className="text-3xl md:text-4xl font-bold text-(--text-primary) leading-tight">
+            <h1 className="text-3xl md:text-4xl font-bold text-text-primary leading-tight">
               {event.title}
             </h1>
             <SocialShare
@@ -137,73 +134,81 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
           {/* Event details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            <div className="flex items-start gap-3 rounded-xl border border-(--border) p-4">
-              <Calendar className="h-5 w-5 text-violet-500 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-(--text-muted) uppercase tracking-wide font-medium mb-0.5">
-                  Date & Time
-                </p>
-                <p className="text-sm font-medium text-(--text-primary)">{startDate}</p>
-                <p className="text-sm text-(--text-muted)">{startTime} WAT</p>
-                {event.eventEndDate && (
-                  <p className="text-xs text-(--text-muted) mt-0.5">
-                    Ends{' '}
-                    {formatDate(event.eventEndDate, {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true,
-                    })}
+            <Card className="border-border">
+              <CardContent className="flex items-start gap-3 p-4">
+                <Calendar className="h-5 w-5 text-primary-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="caption font-medium text-text-muted uppercase tracking-wide mb-0.5">
+                    Date & Time
                   </p>
-                )}
-              </div>
-            </div>
+                  <p className="body-sm font-medium text-text-primary">{startDate}</p>
+                  <p className="body-sm text-text-muted">{startTime} WAT</p>
+                  {event.eventEndDate && (
+                    <p className="caption text-text-muted mt-0.5">
+                      Ends{' '}
+                      {formatDate(event.eventEndDate, {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      })}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="flex items-start gap-3 rounded-xl border border-(--border) p-4">
-              <MapPin className="h-5 w-5 text-violet-500 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-(--text-muted) uppercase tracking-wide font-medium mb-0.5">
-                  Location
-                </p>
-                <p className="text-sm font-medium text-(--text-primary)">{event.venue}</p>
-                <p className="text-sm text-(--text-muted)">{event.location}</p>
-                {event.address && (
-                  <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(event.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-violet-600 hover:text-violet-800 mt-1"
-                  >
-                    View on map <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
-              </div>
-            </div>
+            <Card className="border-border">
+              <CardContent className="flex items-start gap-3 p-4">
+                <MapPin className="h-5 w-5 text-primary-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="caption font-medium text-text-muted uppercase tracking-wide mb-0.5">
+                    Location
+                  </p>
+                  <p className="body-sm font-medium text-text-primary">{event.venue}</p>
+                  <p className="body-sm text-text-muted">{event.location}</p>
+                  {event.address && (
+                    <a
+                      href={`https://maps.google.com/?q=${encodeURIComponent(event.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-brand hover:text-brand/80 mt-1"
+                    >
+                      View on map <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             {event.totalCapacity && (
-              <div className="flex items-start gap-3 rounded-xl border border-(--border) p-4">
-                <Users className="h-5 w-5 text-violet-500 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-xs text-(--text-muted) uppercase tracking-wide font-medium mb-0.5">
-                    Capacity
-                  </p>
-                  <p className="text-sm font-medium text-(--text-primary)">
-                    {event.totalCapacity.toLocaleString('en-NG')} attendees
-                  </p>
-                </div>
-              </div>
+              <Card className="border-border">
+                <CardContent className="flex items-start gap-3 p-4">
+                  <Users className="h-5 w-5 text-primary-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="caption font-medium text-text-muted uppercase tracking-wide mb-0.5">
+                      Capacity
+                    </p>
+                    <p className="body-sm font-medium text-text-primary">
+                      {event.totalCapacity.toLocaleString('en-NG')} attendees
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
-            <div className="flex items-start gap-3 rounded-xl border border-(--border) p-4">
-              <Tag className="h-5 w-5 text-violet-500 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-(--text-muted) uppercase tracking-wide font-medium mb-0.5">
-                  Organizer
-                </p>
-                <p className="text-sm font-medium text-(--text-primary)">
-                  {event.organizer.businessName ?? event.organizer.fullName}
-                </p>
-              </div>
-            </div>
+            <Card className="border-border">
+              <CardContent className="flex items-start gap-3 p-4">
+                <Tag className="h-5 w-5 text-primary-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="caption font-medium text-text-muted uppercase tracking-wide mb-0.5">
+                    Organizer
+                  </p>
+                  <p className="body-sm font-medium text-text-primary">
+                    {event.organizer.businessName ?? event.organizer.fullName}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Add to calendar */}
@@ -222,8 +227,8 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
           {/* Description */}
           <div>
-            <h2 className="text-xl font-semibold text-(--text-primary) mb-3">About this event</h2>
-            <div className="prose prose-sm max-w-none text-(--text-secondary) leading-relaxed whitespace-pre-line">
+            <h2 className="heading-lg text-text-primary mb-3">About this event</h2>
+            <div className="body-md text-text-secondary leading-relaxed whitespace-pre-line">
               {event.description}
             </div>
           </div>
@@ -233,12 +238,12 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         <div className="lg:col-span-1">
           <div className="sticky top-24">
             {event.isCancelled ? (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
-                <p className="font-semibold text-red-700">Event Cancelled</p>
-                <p className="text-sm text-red-600 mt-1">
+              <Card className="border-danger/20 bg-danger-light p-6 text-center">
+                <p className="font-semibold text-danger">Event Cancelled</p>
+                <p className="body-sm text-danger/80 mt-1">
                   This event has been cancelled. If you purchased tickets, you will be refunded.
                 </p>
-              </div>
+              </Card>
             ) : (
               <EventTicketSelectorWrapper event={event} />
             )}

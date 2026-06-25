@@ -5,6 +5,9 @@ import { Search } from 'lucide-react';
 import { EventCard } from '@/components/public/event-card';
 import { CategoryFilterBar } from '@/components/public/category-filter-bar';
 import { getPublishedEventsAction } from '@/actions/event.actions';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
   title: 'Browse Events',
@@ -21,9 +24,11 @@ async function EventsGrid({ params }: { params: Record<string, string> }) {
 
   if (!result.success || !result.data) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-200 py-20 text-center">
-        <p className="text-gray-400">Unable to load events. Please try again.</p>
-      </div>
+      <Card className="border-dashed border-2 border-border py-20 text-center">
+        <CardContent>
+          <p className="text-text-muted">Unable to load events. Please try again.</p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -31,17 +36,19 @@ async function EventsGrid({ params }: { params: Record<string, string> }) {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-200 py-20 text-center">
-        <p className="text-2xl mb-2">🔍</p>
-        <p className="text-gray-500 font-medium">No events found</p>
-        <p className="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
-      </div>
+      <Card className="border-dashed border-2 border-border py-20 text-center">
+        <CardContent>
+          <p className="text-4xl mb-3">🔍</p>
+          <p className="heading-md text-text-primary mb-1">No events found</p>
+          <p className="body-sm text-text-muted">Try adjusting your filters</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <>
-      <p className="text-sm text-gray-500 mb-4">
+      <p className="body-sm text-text-muted mb-4">
         Showing {items.length} of {total} event{total !== 1 ? 's' : ''}
       </p>
 
@@ -55,23 +62,27 @@ async function EventsGrid({ params }: { params: Record<string, string> }) {
       {totalPages > 1 && (
         <div className="mt-8 flex items-center justify-center gap-2">
           {page > 1 && (
-            <Link
-              href={buildPageUrl(params, page - 1)}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="border-border text-text-secondary hover:bg-surface-raised"
             >
-              ← Previous
-            </Link>
+              <Link href={buildPageUrl(params, page - 1)}>← Previous</Link>
+            </Button>
           )}
-          <span className="text-sm text-gray-500">
+          <span className="body-sm text-text-muted">
             Page {page} of {totalPages}
           </span>
           {page < totalPages && (
-            <Link
-              href={buildPageUrl(params, page + 1)}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="border-border text-text-secondary hover:bg-surface-raised"
             >
-              Next →
-            </Link>
+              <Link href={buildPageUrl(params, page + 1)}>Next →</Link>
+            </Button>
           )}
         </div>
       )}
@@ -92,13 +103,13 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-1">Upcoming Events</h1>
-        <p className="text-gray-500">Discover amazing events happening across Nigeria</p>
+        <h1 className="display-md text-text-primary mb-1">Upcoming Events</h1>
+        <p className="body-md text-text-muted">Discover amazing events happening across Nigeria</p>
       </div>
 
       {/* Search bar */}
       <div className="relative mb-4">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
         <form method="GET">
           {/* Preserve other params */}
           {Object.entries(params)
@@ -106,11 +117,11 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
             .map(([k, v]) => (
               <input key={k} type="hidden" name={k} value={v} />
             ))}
-          <input
+          <Input
             name="search"
             defaultValue={params['search'] ?? ''}
             placeholder="Search events, venues, cities..."
-            className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white"
+            className="w-full pl-10 input-base"
           />
         </form>
       </div>
@@ -127,10 +138,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         fallback={
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="rounded-2xl border border-gray-100 bg-gray-50 h-72 animate-pulse"
-              />
+              <Card key={i} className="h-72 animate-pulse bg-surface-sunken border-border" />
             ))}
           </div>
         }

@@ -3,9 +3,12 @@
 import { useState } from 'react';
 import { Share2, Twitter, Link2, MessageCircle, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface SocialShareProps {
-  url: string; // relative path e.g. /events/slug
+  url: string;
   title: string;
   className?: string;
 }
@@ -44,21 +47,23 @@ export function SocialShare({ url, title, className }: SocialShareProps) {
   }
 
   return (
-    <div className={cn('relative', className)}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Share event"
-        className="flex items-center gap-1.5 rounded-xl border border-(--border) px-3 py-2 text-sm text-(--text-muted) hover:border-violet-300 hover:text-violet-700 hover:bg-violet-50 transition-all"
-      >
-        <Share2 className="h-4 w-4" />
-        <span className="hidden sm:inline">Share</span>
-      </button>
-
-      {open && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-(--border) bg-(--surface-overlay) shadow-card-lg z-20 overflow-hidden">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            'border-border text-text-muted hover:border-primary-300 hover:text-primary-700 hover:bg-primary-50',
+            className
+          )}
+          aria-label="Share event"
+        >
+          <Share2 className="h-4 w-4" />
+          <span className="hidden sm:inline">Share</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-0 border-border" align="end">
+        <Card className="border-0 shadow-none">
+          <CardContent className="p-0">
             {links.map((link) => (
               <a
                 key={link.label}
@@ -66,7 +71,7 @@ export function SocialShare({ url, title, className }: SocialShareProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 text-sm text-(--text-secondary) hover:bg-(--surface-raised) hover:text-(--text-primary) transition-colors"
+                className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-colors"
               >
                 {link.icon}
                 {link.label}
@@ -77,18 +82,14 @@ export function SocialShare({ url, title, className }: SocialShareProps) {
                 void copyLink();
                 setOpen(false);
               }}
-              className="flex w-full items-center gap-3 px-4 py-3 text-sm text-(--text-secondary) hover:bg-(--surface-raised) hover:text-(--text-primary) transition-colors border-t border-(--border)"
+              className="flex w-full items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-colors border-t border-border"
             >
-              {copied ? (
-                <Check className="h-4 w-4 text-green-500" />
-              ) : (
-                <Link2 className="h-4 w-4" />
-              )}
+              {copied ? <Check className="h-4 w-4 text-success" /> : <Link2 className="h-4 w-4" />}
               {copied ? 'Copied!' : 'Copy link'}
             </button>
-          </div>
-        </>
-      )}
-    </div>
+          </CardContent>
+        </Card>
+      </PopoverContent>
+    </Popover>
   );
 }
