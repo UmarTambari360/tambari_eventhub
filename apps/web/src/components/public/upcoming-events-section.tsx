@@ -1,6 +1,6 @@
-import { getPublishedEventsAction } from "@/actions/event.actions";
-import { Link, ArrowRight } from "lucide-react";
-import { EventCard } from "./event-card";
+import { getPublishedEventsAction } from '@/actions/event.actions';
+import { Link, ArrowRight } from 'lucide-react';
+import { EventCard } from './events/event-card';
 
 export async function UpcomingEventsSection() {
   const result = await getPublishedEventsAction({ limit: '8', sortBy: 'date' });
@@ -13,7 +13,7 @@ export async function UpcomingEventsSection() {
         <div>
           <p className="overline text-text-muted mb-1">Don't miss out</p>
           <h2 className="display-md text-text-primary">Upcoming Events</h2>
-       </div>
+        </div>
         <Link
           href="/events"
           className="hidden sm:flex items-center gap-1.5 body-sm font-semibold text-brand hover:underline"

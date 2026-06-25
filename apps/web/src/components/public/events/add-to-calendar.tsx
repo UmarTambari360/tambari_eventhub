@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { CalendarPlus, ChevronDown, X } from 'lucide-react';
 import { buildGoogleCalendarUrl, buildIcsDataUri } from '@/lib/calendar';
 import { cn } from '@/lib/utils';
