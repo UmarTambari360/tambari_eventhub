@@ -18,6 +18,17 @@ export function formatDate(
     typeof date === 'string' ? new Date(date) : date
   );
 }
+
+export function toDatetimeLocalValue(isoOrLocal: string): string {
+  if (!isoOrLocal) return '';
+  // Already in datetime-local format (no offset)
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(isoOrLocal)) return isoOrLocal;
+  const d = new Date(isoOrLocal);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function formatNaira(kobo: number): string {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',

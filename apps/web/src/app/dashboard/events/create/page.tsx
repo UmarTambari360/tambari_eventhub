@@ -4,12 +4,22 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Trash2, Loader2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { createEventSchema, type CreateEventInput } from '@eventhub/validators';
 import { useAuth } from '@/hooks/use-auth';
 import { createEventAction } from '@/actions/event.actions';
 import { ImageUpload } from '@/components/shared/image-upload';
-import { cn } from '@/lib/utils';
+
+// Shadcn UI imports
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+} from '@/components/ui/form';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { TicketTypeSection } from '@/components/organizer/ticket-types-section';
+import { EventDetailsSection } from '@/components/organizer/event-details-section';
+import { LocationDateSection } from '@/components/organizer/location-date-section';
 
 const CATEGORIES = [
   'Music',
@@ -30,14 +40,7 @@ export default function CreateEventPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<CreateEventInput>({
+  const form = useForm<CreateEventInput>({
     resolver: zodResolver(createEventSchema),
     defaultValues: {
       tags: [],
@@ -54,13 +57,13 @@ export default function CreateEventPage() {
   });
 
   const { fields, append, remove } = useFieldArray({
-    control,
+    control: form.control,
     name: 'ticketTypes',
   });
 
   // Watch image fields for the ImageUpload component
-  const bannerImageUrl = watch('bannerImageUrl');
-  const thumbnailUrl = watch('thumbnailUrl');
+  const bannerImageUrl = form.watch('bannerImageUrl');
+  const thumbnailUrl = form.watch('thumbnailUrl');
 
   async function onSubmit(data: CreateEventInput) {
     if (!auth?.accessToken) return;
@@ -81,347 +84,89 @@ export default function CreateEventPage() {
 
   return (
     <div className="max-w-3xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Create Event</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Fill in your event details and ticket types</p>
+      {/* Page Header */}
+      <div className="mb-8 space-y-1">
+        <h1 className="heading-xl text-text-primary">Create Event</h1>
+        <p className="text-text-secondary text-sm">Fill in your event details and ticket types</p>
       </div>
 
       {submitError && (
-        <div className="mb-5 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {submitError}
-        </div>
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{submitError}</AlertDescription>
+        </Alert>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-8">
-        {/* ── Event Details ── */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-5">
-          <h2 className="font-semibold text-gray-900">Event Details</h2>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-8">
+          {/* Event Details Section */}
+          <EventDetailsSection form={form} categories={CATEGORIES} />
 
-          <div>
-            <label className="label-text">
-              Event Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              {...register('title')}
-              className={inputCls(!!errors.title)}
-              placeholder="e.g. Lagos Music Festival 2025"
-            />
-            {errors.title && <p className="field-error">{errors.title.message}</p>}
-          </div>
+          {/* Images Section */}
+          <Card className="border-border bg-surface-overlay">
+            <CardHeader>
+              <CardTitle className="text-text-primary">Event Images</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <ImageUpload
+                type="event-banner"
+                value={bannerImageUrl ?? ''}
+                publicId={form.watch('bannerPublicId') ?? ''}
+                accessToken={auth.accessToken}
+                label="Banner Image"
+                hint="Recommended: 1920×1080px (16:9). Shown on the event detail page."
+                aspectRatio="16/9"
+                onChange={(result) => {
+                  form.setValue('bannerImageUrl', result?.url ?? '');
+                  form.setValue('bannerPublicId', result?.publicId ?? '');
+                }}
+              />
 
-          <div>
-            <label className="label-text">
-              Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              {...register('description')}
-              rows={5}
-              className={inputCls(!!errors.description) + ' resize-none'}
-              placeholder="Tell attendees what to expect at your event..."
-            />
-            {errors.description && <p className="field-error">{errors.description.message}</p>}
-          </div>
+              <ImageUpload
+                type="event-thumbnail"
+                value={thumbnailUrl ?? ''}
+                publicId={form.watch('thumbnailPublicId') ?? ''}
+                accessToken={auth.accessToken}
+                label="Thumbnail Image"
+                hint="Recommended: 800×600px (4:3). Shown in event listings and search results."
+                aspectRatio="4/3"
+                onChange={(result) => {
+                  form.setValue('thumbnailUrl', result?.url ?? '');
+                  form.setValue('thumbnailPublicId', result?.publicId ?? '');
+                }}
+              />
+            </CardContent>
+          </Card>
 
-          <div>
-            <label className="label-text">Category</label>
-            <select {...register('category')} className={inputCls(false) + ' bg-white'}>
-              <option value="">Select a category</option>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-        </section>
+          {/* Location & Date Section */}
+          <LocationDateSection form={form} />
 
-        {/* ── Images ── */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-6">
-          <h2 className="font-semibold text-gray-900">Event Images</h2>
-
-          <ImageUpload
-            type="event-banner"
-            value={bannerImageUrl ?? ''}
-            publicId={watch('bannerPublicId') ?? ''}
-            accessToken={auth.accessToken}
-            label="Banner Image"
-            hint="Recommended: 1920×1080px (16:9). Shown on the event detail page."
-            aspectRatio="16/9"
-            onChange={(result) => {
-              setValue('bannerImageUrl', result?.url ?? '');
-              setValue('bannerPublicId', result?.publicId ?? '');
-            }}
+          {/* Ticket Types Section */}
+          <TicketTypeSection
+            fields={fields}
+            form={form}
+            onAppend={append}
+            onRemove={remove}
+            canRemove={fields.length > 1}
           />
 
-          <ImageUpload
-            type="event-thumbnail"
-            value={thumbnailUrl ?? ''}
-            publicId={watch('thumbnailPublicId') ?? ''}
-            accessToken={auth.accessToken}
-            label="Thumbnail Image"
-            hint="Recommended: 800×600px (4:3). Shown in event listings and search results."
-            aspectRatio="4/3"
-            onChange={(result) => {
-              setValue('thumbnailUrl', result?.url ?? '');
-              setValue('thumbnailPublicId', result?.publicId ?? '');
-            }}
-          />
-        </section>
-
-        {/* ── Location & Date ── */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-5">
-          <h2 className="font-semibold text-gray-900">Location & Date</h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <label className="label-text">
-                Venue <span className="text-red-500">*</span>
-              </label>
-              <input
-                {...register('venue')}
-                className={inputCls(!!errors.venue)}
-                placeholder="e.g. Eko Atlantic Amphitheatre"
-              />
-              {errors.venue && <p className="field-error">{errors.venue.message}</p>}
-            </div>
-
-            <div>
-              <label className="label-text">
-                City / Location <span className="text-red-500">*</span>
-              </label>
-              <input
-                {...register('location')}
-                className={inputCls(!!errors.location)}
-                placeholder="e.g. Lagos"
-              />
-              {errors.location && <p className="field-error">{errors.location.message}</p>}
-            </div>
-          </div>
-
-          <div>
-            <label className="label-text">Full Address (optional)</label>
-            <input
-              {...register('address')}
-              className={inputCls(false)}
-              placeholder="e.g. Plot 1, Eko Atlantic City, Victoria Island, Lagos"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <label className="label-text">
-                Start Date & Time <span className="text-red-500">*</span>
-              </label>
-              <input
-                {...register('eventDate')}
-                type="datetime-local"
-                className={inputCls(!!errors.eventDate)}
-              />
-              {errors.eventDate && <p className="field-error">{errors.eventDate.message}</p>}
-            </div>
-
-            <div>
-              <label className="label-text">End Date & Time (optional)</label>
-              <input
-                {...register('eventEndDate')}
-                type="datetime-local"
-                className={inputCls(false)}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* ── Ticket Types ── */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="font-semibold text-gray-900">Ticket Types</h2>
-              <p className="text-xs text-gray-400 mt-0.5">
-                At least one ticket type required. Set price to 0 for free tickets.
-              </p>
-            </div>
-            <button
+          {/* Submit Actions */}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
               type="button"
-              onClick={() =>
-                append({ name: '', price: 0, quantity: 100, minPurchase: 1, maxPurchase: 10 })
-              }
-              disabled={fields.length >= 10}
-              className="flex items-center gap-1.5 rounded-lg border border-violet-300 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-50 transition-colors disabled:opacity-50"
+              variant="outline"
+              onClick={() => router.back()}
+              className="border-border text-text-secondary hover:bg-surface-raised"
             >
-              <Plus className="h-3.5 w-3.5" />
-              Add Ticket Type
-            </button>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting} className="btn-primary min-w-[140px]">
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              Create Event
+            </Button>
           </div>
-
-          {errors.ticketTypes?.root && (
-            <p className="field-error mb-4">{errors.ticketTypes.root.message}</p>
-          )}
-
-          <div className="space-y-4">
-            {fields.map((field, idx) => (
-              <TicketTypeRow
-                key={field.id}
-                index={idx}
-                register={register}
-                errors={errors}
-                canRemove={fields.length > 1}
-                onRemove={() => remove(idx)}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* Submit */}
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60 transition-colors"
-          >
-            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Create Event
-          </button>
-        </div>
-      </form>
+        </form>
+      </Form>
     </div>
-  );
-}
-
-// ── Ticket type row sub-component ─────────────────────────────────────────────
-
-import type { UseFormRegister, FieldErrors } from 'react-hook-form';
-
-interface TicketTypeRowProps {
-  index: number;
-  register: UseFormRegister<CreateEventInput>;
-  errors: FieldErrors<CreateEventInput>;
-  canRemove: boolean;
-  onRemove: () => void;
-}
-
-function TicketTypeRow({ index, register, errors, canRemove, onRemove }: TicketTypeRowProps) {
-  const [expanded, setExpanded] = useState(true);
-  const ttErrors = errors.ticketTypes?.[index];
-
-  return (
-    <div className="rounded-xl border border-gray-200 overflow-hidden">
-      <div
-        className="flex items-center justify-between px-4 py-3 bg-gray-50 cursor-pointer"
-        onClick={() => setExpanded((e) => !e)}
-      >
-        <span className="text-sm font-medium text-gray-700">Ticket Type {index + 1}</span>
-        <div className="flex items-center gap-2">
-          {canRemove && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
-              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          )}
-          {expanded ? (
-            <ChevronUp className="h-4 w-4 text-gray-400" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-gray-400" />
-          )}
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="px-4 py-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="label-text">
-                Ticket Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                {...register(`ticketTypes.${index}.name`)}
-                className={inputCls(!!ttErrors?.name)}
-                placeholder="e.g. General Admission"
-              />
-              {ttErrors?.name && <p className="field-error">{ttErrors.name.message}</p>}
-            </div>
-
-            <div>
-              <label className="label-text">
-                Price in kobo — 0 for free <span className="text-red-500">*</span>
-              </label>
-              <input
-                {...register(`ticketTypes.${index}.price`, { valueAsNumber: true })}
-                type="number"
-                min={0}
-                step={100}
-                className={inputCls(!!ttErrors?.price)}
-                placeholder="0"
-              />
-              {ttErrors?.price && <p className="field-error">{ttErrors.price.message}</p>}
-              <p className="mt-0.5 text-xs text-gray-400">e.g. 1500000 = ₦15,000</p>
-            </div>
-          </div>
-
-          <div>
-            <label className="label-text">Description (optional)</label>
-            <input
-              {...register(`ticketTypes.${index}.description`)}
-              className={inputCls(false)}
-              placeholder="What's included with this ticket?"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="label-text">
-                Quantity <span className="text-red-500">*</span>
-              </label>
-              <input
-                {...register(`ticketTypes.${index}.quantity`, { valueAsNumber: true })}
-                type="number"
-                min={1}
-                className={inputCls(!!ttErrors?.quantity)}
-              />
-              {ttErrors?.quantity && <p className="field-error">{ttErrors.quantity.message}</p>}
-            </div>
-            <div>
-              <label className="label-text">Min per order</label>
-              <input
-                {...register(`ticketTypes.${index}.minPurchase`, { valueAsNumber: true })}
-                type="number"
-                min={1}
-                className={inputCls(false)}
-              />
-            </div>
-            <div>
-              <label className="label-text">Max per order</label>
-              <input
-                {...register(`ticketTypes.${index}.maxPurchase`, { valueAsNumber: true })}
-                type="number"
-                min={1}
-                max={20}
-                className={inputCls(false)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function inputCls(hasError: boolean): string {
-  return cn(
-    'w-full rounded-lg border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors',
-    hasError ? 'border-red-300 bg-red-50' : 'border-gray-200'
   );
 }

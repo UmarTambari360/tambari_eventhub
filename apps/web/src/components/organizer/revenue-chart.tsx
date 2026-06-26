@@ -11,6 +11,7 @@ import {
   Legend,
 } from 'recharts';
 import type { MonthlyRevenueStat } from '@/actions/analytics.actions';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface RevenueChartProps {
   data: MonthlyRevenueStat[];
@@ -41,17 +42,19 @@ const CustomTooltip = ({
   if (!active || !payload?.length) return null;
 
   return (
-    <div className="card p-3 shadow-card-md text-sm min-w-[160px]">
-      <p className="font-semibold text-(--text-primary) mb-2">{label}</p>
-      {payload.map((entry) => (
-        <div key={entry.name} className="flex justify-between gap-4 items-center">
-          <span className="text-(--text-muted)">{entry.name}</span>
-          <span className="font-semibold" style={{ color: entry.color }}>
-            {entry.name === 'Orders' ? entry.value : formatNairaShort(entry.value)}
-          </span>
-        </div>
-      ))}
-    </div>
+    <Card className="p-3 shadow-card-md text-sm min-w-[160px] border-border">
+      <CardContent className="p-0">
+        <p className="font-semibold text-text-primary mb-2">{label}</p>
+        {payload.map((entry) => (
+          <div key={entry.name} className="flex justify-between gap-4 items-center">
+            <span className="text-text-muted">{entry.name}</span>
+            <span className="font-semibold" style={{ color: entry.color }}>
+              {entry.name === 'Orders' ? entry.value : formatNairaShort(entry.value)}
+            </span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -66,9 +69,11 @@ export function RevenueChart({ data }: RevenueChartProps) {
 
   if (!hasData) {
     return (
-      <div className="flex h-48 items-center justify-center rounded-xl bg-(--surface-raised) border border-dashed border-(--border)">
-        <p className="body-sm text-(--text-muted)">No revenue data yet</p>
-      </div>
+      <Card className="border-dashed border-2 border-border">
+        <CardContent className="flex h-48 items-center justify-center">
+          <p className="body-sm text-text-muted">No revenue data yet</p>
+        </CardContent>
+      </Card>
     );
   }
 

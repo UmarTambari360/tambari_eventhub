@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 type Status =
   | 'pending'
@@ -18,21 +19,36 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-const statusConfig: Record<Status, { label: string; className: string }> = {
-  pending: { label: 'Pending', className: 'badge badge-warning' },
-  approved: { label: 'Approved', className: 'badge badge-success' },
-  rejected: { label: 'Rejected', className: 'badge badge-danger' },
-  suspended: { label: 'Suspended', className: 'badge badge-neutral' },
-  paid: { label: 'Paid', className: 'badge badge-success' },
-  failed: { label: 'Failed', className: 'badge badge-danger' },
-  cancelled: { label: 'Cancelled', className: 'badge badge-neutral' },
-  refunded: { label: 'Refunded', className: 'badge badge-info' },
-  processing: { label: 'Processing', className: 'badge badge-primary' },
-  active: { label: 'Active', className: 'badge badge-success' },
-  inactive: { label: 'Inactive', className: 'badge badge-neutral' },
+const statusConfig: Record<Status, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' }> = {
+  pending: { label: 'Pending', variant: 'warning' },
+  approved: { label: 'Approved', variant: 'success' },
+  rejected: { label: 'Rejected', variant: 'destructive' },
+  suspended: { label: 'Suspended', variant: 'secondary' },
+  paid: { label: 'Paid', variant: 'success' },
+  failed: { label: 'Failed', variant: 'destructive' },
+  cancelled: { label: 'Cancelled', variant: 'secondary' },
+  refunded: { label: 'Refunded', variant: 'secondary' },
+  processing: { label: 'Processing', variant: 'default' },
+  active: { label: 'Active', variant: 'success' },
+  inactive: { label: 'Inactive', variant: 'secondary' },
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const config = statusConfig[status];
-  return <span className={cn(config.className, className)}>{config.label}</span>;
+  
+  // Map variant to actual classes
+
+  return (
+    <Badge 
+      variant={config.variant === 'success' || config.variant === 'warning' ? 'default' : config.variant}
+      className={cn(
+        'shrink-0',
+        config.variant === 'success' && 'bg-success text-white hover:bg-success/90 border-success',
+        config.variant === 'warning' && 'bg-warning text-white hover:bg-warning/90 border-warning',
+        className
+      )}
+    >
+      {config.label}
+    </Badge>
+  );
 }

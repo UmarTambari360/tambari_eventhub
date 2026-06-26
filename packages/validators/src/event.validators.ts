@@ -1,5 +1,25 @@
 import { z } from 'zod';
 
+function toIsoDatetime(val: unknown): unknown {
+  if (val === '' || val === undefined || val === null) return val;
+  if (typeof val !== 'string') return val;
+  // Already ISO 8601 with offset
+  if (/[Zz]|[+-]\d{2}:\d{2}$/.test(val)) return val;
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return val;
+  return d.toISOString();
+}
+
+const isoDatetime = z.preprocess(
+  toIsoDatetime,
+  z.string({ required_error: 'Event date is required' }).datetime({ offset: true })
+);
+
+const optionalIsoDatetime = z.preprocess(
+  toIsoDatetime,
+  z.string().datetime({ offset: true }).optional().or(z.literal(''))
+);
+
 // ─── Ticket Type ──────────────────────────────────────────────────────────────
 
 export const createTicketTypeSchema = z.object({
@@ -18,8 +38,8 @@ export const createTicketTypeSchema = z.object({
     .int()
     .min(1, 'Quantity must be at least 1')
     .max(100_000, 'Quantity must be at most 100,000'),
-  saleStartDate: z.string().datetime({ offset: true }).optional().or(z.literal('')),
-  saleEndDate: z.string().datetime({ offset: true }).optional().or(z.literal('')),
+  saleStartDate: optionalIsoDatetime,
+  saleEndDate: optionalIsoDatetime,
   minPurchase: z.number().int().min(1).default(1),
   maxPurchase: z.number().int().min(1).max(20).default(10),
 });
@@ -68,8 +88,8 @@ export const createEventSchema = z.object({
     .max(100)
     .trim(),
   address: z.string().max(300).trim().optional().or(z.literal('')),
-  eventDate: z.string({ required_error: 'Event date is required' }).datetime({ offset: true }),
-  eventEndDate: z.string().datetime({ offset: true }).optional().or(z.literal('')),
+  eventDate: isoDatetime,
+  eventEndDate: optionalIsoDatetime,
   category: z.enum(VALID_CATEGORIES).optional(),
   tags: z.array(z.string().max(30).trim()).max(10).default([]),
   bannerImageUrl: z.string().url().optional().or(z.literal('')),
@@ -88,8 +108,8 @@ export const updateEventSchema = z.object({
   venue: z.string().min(3).max(200).trim().optional(),
   location: z.string().min(2).max(100).trim().optional(),
   address: z.string().max(300).trim().optional().or(z.literal('')),
-  eventDate: z.string().datetime({ offset: true }).optional(),
-  eventEndDate: z.string().datetime({ offset: true }).optional().or(z.literal('')),
+  eventDate: optionalIsoDatetime,
+  eventEndDate: optionalIsoDatetime,
   category: z.enum(VALID_CATEGORIES).optional(),
   tags: z.array(z.string().max(30).trim()).max(10).optional(),
   bannerImageUrl: z.string().url().optional().or(z.literal('')),
@@ -112,8 +132,8 @@ export const eventFilterSchema = z.object({
     .string()
     .transform((v) => v === 'true')
     .optional(),
-  dateFrom: z.string().datetime({ offset: true }).optional(),
-  dateTo: z.string().datetime({ offset: true }).optional(),
+  dateFrom: optionalIsoDatetime,
+  dateTo: optionalIsoDatetime,
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(40).default(12),
   sortBy: z.enum(['date', 'created', 'popular']).default('date'),

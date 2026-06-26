@@ -1,8 +1,11 @@
+// components/shared/image-upload.tsx
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
 import { Upload, X, Loader2, ImageIcon, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
 
 export type UploadType = 'event-banner' | 'event-thumbnail' | 'avatar';
 
@@ -158,13 +161,15 @@ export function ImageUpload({
 
   return (
     <div className={cn('space-y-2', className)}>
-      {label && <p className="text-sm font-medium text-gray-700">{label}</p>}
+      {label && <Label className="text-text-primary">{label}</Label>}
 
       <div
         className={cn(
           'relative rounded-xl border-2 border-dashed transition-colors overflow-hidden',
-          dragActive ? 'border-violet-400 bg-violet-50' : 'border-gray-200',
-          !disabled && !isLoading && 'cursor-pointer hover:border-violet-300 hover:bg-gray-50',
+          dragActive ? 'border-primary-400 bg-primary-50' : 'border-border',
+          !disabled &&
+            !isLoading &&
+            'cursor-pointer hover:border-primary-300 hover:bg-surface-raised',
           disabled && 'opacity-60 cursor-not-allowed'
         )}
         style={{ aspectRatio }}
@@ -178,6 +183,7 @@ export function ImageUpload({
         {/* Preview */}
         {value && !uploading ? (
           <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={value} alt="Uploaded image" className="w-full h-full object-cover" />
             {/* Remove button */}
             {!disabled && (
@@ -213,19 +219,19 @@ export function ImageUpload({
           <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
             {uploading ? (
               <>
-                <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
-                <p className="text-sm text-gray-500">Uploading...</p>
+                <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+                <p className="text-sm text-text-secondary">Uploading...</p>
               </>
             ) : (
               <>
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-                  <ImageIcon className="h-6 w-6 text-gray-400" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-raised">
+                  <ImageIcon className="h-6 w-6 text-text-muted" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">
-                    <span className="text-violet-600">Click to upload</span> or drag and drop
+                  <p className="text-sm font-medium text-text-primary">
+                    <span className="text-primary-600">Click to upload</span> or drag and drop
                   </p>
-                  <p className="mt-0.5 text-xs text-gray-400">
+                  <p className="mt-0.5 text-xs text-text-muted">
                     JPEG, PNG, WebP — max {MAX_SIZE_MB} MB
                   </p>
                 </div>
@@ -236,14 +242,14 @@ export function ImageUpload({
       </div>
 
       {/* Hint */}
-      {hint && !error && <p className="text-xs text-gray-400">{hint}</p>}
+      {hint && !error && <p className="text-xs text-text-muted">{hint}</p>}
 
       {/* Error */}
       {error && (
-        <div className="flex items-center gap-1.5 text-xs text-red-600">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-          {error}
-        </div>
+        <Alert variant="destructive" className="py-2">
+          <AlertCircle className="h-3.5 w-3.5" />
+          <AlertDescription className="text-xs">{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* Hidden file input */}

@@ -13,6 +13,17 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { formatDate } from '@/lib/utils';
 import type { OrganizerEventDTO } from '@eventhub/types';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function DashboardEventsPage() {
   const auth = useAuth();
@@ -80,22 +91,21 @@ export default function DashboardEventsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Events</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Create and manage your events</p>
+          <h1 className="display-md text-text-primary">My Events</h1>
+          <p className="body-sm text-text-muted mt-0.5">Create and manage your events</p>
         </div>
-        <Link
-          href="/dashboard/events/create"
-          className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Create Event
-        </Link>
+        <Button asChild className="btn-primary">
+          <Link href="/dashboard/events/create">
+            <Plus className="h-4 w-4" />
+            Create Event
+          </Link>
+        </Button>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert variant="destructive" className="mb-4 border-danger/20 bg-danger-light">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {loading ? (
@@ -103,95 +113,114 @@ export default function DashboardEventsPage() {
           <LoadingSpinner size="lg" />
         </div>
       ) : events.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center">
-          <p className="text-2xl mb-2">🎪</p>
-          <p className="text-gray-500 font-medium">No events yet</p>
-          <p className="text-sm text-gray-400 mt-1 mb-6">Create your first event to get started</p>
-          <Link
-            href="/dashboard/events/create"
-            className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Create Event
-          </Link>
-        </div>
+        <Card className="border-dashed border-2 border-border py-16 text-center">
+          <CardContent className="pt-6">
+            <p className="text-4xl mb-3">🎪</p>
+            <p className="heading-sm text-text-primary mb-1">No events yet</p>
+            <p className="body-sm text-text-muted mt-1 mb-6">
+              Create your first event to get started
+            </p>
+            <Button asChild className="btn-primary">
+              <Link href="/dashboard/events/create">
+                <Plus className="h-4 w-4" />
+                Create Event
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">Event</th>
-                <th className="px-5 py-3 text-left font-medium text-gray-500 hidden sm:table-cell">
-                  Date
-                </th>
-                <th className="px-5 py-3 text-left font-medium text-gray-500 hidden md:table-cell">
-                  Location
-                </th>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">Status</th>
-                <th className="px-5 py-3 text-right font-medium text-gray-500">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {events.map((event) => (
-                <tr key={event.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-4">
-                    <div className="font-medium text-gray-900 line-clamp-1">{event.title}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">
-                      {event.isFree ? 'Free' : 'Paid'}
-                      {event.category && ` · ${event.category}`}
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-gray-600 hidden sm:table-cell whitespace-nowrap">
-                    {formatDate(event.eventDate)}
-                  </td>
-                  <td className="px-5 py-4 text-gray-600 hidden md:table-cell">{event.location}</td>
-                  <td className="px-5 py-4">
-                    <StatusBadge status={getEventStatus(event)} />
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center justify-end gap-1">
-                      <Link
-                        href={`/dashboard/events/${event.id}`}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Link>
-
-                      {!event.isCancelled && (
-                        <button
-                          onClick={() => void handleTogglePublish(event)}
-                          disabled={actionLoading === event.id}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-50"
-                          title={event.isPublished ? 'Unpublish' : 'Publish'}
+        <Card className="border-border overflow-hidden">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader className="bg-surface-raised">
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-text-muted font-medium">Event</TableHead>
+                  <TableHead className="text-text-muted font-medium hidden sm:table-cell">
+                    Date
+                  </TableHead>
+                  <TableHead className="text-text-muted font-medium hidden md:table-cell">
+                    Location
+                  </TableHead>
+                  <TableHead className="text-text-muted font-medium">Status</TableHead>
+                  <TableHead className="text-text-muted font-medium text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {events.map((event) => (
+                  <TableRow
+                    key={event.id}
+                    className="border-border hover:bg-surface-raised/50 transition-colors"
+                  >
+                    <TableCell>
+                      <div className="font-medium text-text-primary line-clamp-1">
+                        {event.title}
+                      </div>
+                      <div className="caption text-text-muted mt-0.5">
+                        {event.isFree ? 'Free' : 'Paid'}
+                        {event.category && ` · ${event.category}`}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-text-secondary hidden sm:table-cell whitespace-nowrap">
+                      {formatDate(event.eventDate)}
+                    </TableCell>
+                    <TableCell className="text-text-secondary hidden md:table-cell">
+                      {event.location}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={getEventStatus(event)} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-text-muted hover:text-primary-600 hover:bg-primary-50"
                         >
-                          {actionLoading === event.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : event.isPublished ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
-                      )}
+                          <Link href={`/dashboard/events/${event.id}`} title="Edit">
+                            <Edit className="h-4 w-4" />
+                          </Link>
+                        </Button>
 
-                      {!event.isCancelled && (
-                        <button
-                          onClick={() => void handleCancel(event.id)}
-                          disabled={actionLoading === event.id}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                          title="Cancel event"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                        {!event.isCancelled && (
+                          <Button
+                            onClick={() => void handleTogglePublish(event)}
+                            disabled={actionLoading === event.id}
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-text-muted hover:text-primary-600 hover:bg-primary-50 disabled:opacity-50"
+                            title={event.isPublished ? 'Unpublish' : 'Publish'}
+                          >
+                            {actionLoading === event.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : event.isPublished ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+
+                        {!event.isCancelled && (
+                          <Button
+                            onClick={() => void handleCancel(event.id)}
+                            disabled={actionLoading === event.id}
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-text-muted hover:text-danger hover:bg-danger-light disabled:opacity-50"
+                            title="Cancel event"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

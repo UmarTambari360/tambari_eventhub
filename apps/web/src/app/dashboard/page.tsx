@@ -9,6 +9,8 @@ import { StatsCard } from '@/components/organizer/stats-card';
 import { RevenueChart } from '@/components/organizer/revenue-chart';
 import { formatNaira } from '@/lib/utils';
 import type { DashboardStats, MonthlyRevenueStat } from '@/actions/analytics.actions';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default function DashboardPage() {
   const auth = useAuth();
@@ -43,8 +45,8 @@ export default function DashboardPage() {
   return (
     <div className="max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-(--text-primary)">Welcome back, {firstName}</h1>
-        <p className="body-sm text-(--text-muted) mt-0.5">
+        <h1 className="display-md text-text-primary">Welcome back, {firstName}</h1>
+        <p className="body-sm text-text-muted mt-0.5">
           Here's what's happening across your events.
         </p>
       </div>
@@ -82,37 +84,46 @@ export default function DashboardPage() {
       </div>
 
       {/* Revenue chart */}
-      <div className="card p-5 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="heading-sm text-(--text-primary)">Revenue — Last 12 Months</h2>
-          <Link href="/dashboard/orders" className="body-sm text-(--primary) hover:underline">
+      <Card className="p-5 mb-6 border-border">
+        <CardHeader className="flex flex-row items-center justify-between p-0 mb-4">
+          <CardTitle className="heading-sm text-text-primary">Revenue — Last 12 Months</CardTitle>
+          <Link href="/dashboard/orders" className="body-sm text-brand hover:underline">
             View all orders →
           </Link>
-        </div>
-        {loadingRevenue ? (
-          <div className="skeleton h-60 rounded-xl" />
-        ) : (
-          <RevenueChart data={revenue} />
-        )}
-      </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loadingRevenue ? (
+            <div className="skeleton h-60 rounded-xl" />
+          ) : (
+            <RevenueChart data={revenue} />
+          )}
+        </CardContent>
+      </Card>
 
       {/* Quick actions */}
       <div>
-        <h2 className="caption text-(--text-muted) uppercase tracking-wide mb-3">Quick Actions</h2>
+        <h2 className="caption text-text-muted uppercase tracking-wide mb-3">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
-          <Link
-            href="/dashboard/events/create"
-            className="flex items-center gap-2 btn btn-primary btn-md"
+          <Button asChild className="btn-primary">
+            <Link href="/dashboard/events/create">
+              <Plus className="h-4 w-4" />
+              Create Event
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="border-border text-text-secondary hover:bg-surface-raised"
           >
-            <Plus className="h-4 w-4" />
-            Create Event
-          </Link>
-          <Link href="/dashboard/events" className="btn btn-ghost btn-md">
-            My Events
-          </Link>
-          <Link href="/dashboard/orders" className="btn btn-ghost btn-md">
-            Orders
-          </Link>
+            <Link href="/dashboard/events">My Events</Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="border-border text-text-secondary hover:bg-surface-raised"
+          >
+            <Link href="/dashboard/orders">Orders</Link>
+          </Button>
         </div>
       </div>
     </div>
