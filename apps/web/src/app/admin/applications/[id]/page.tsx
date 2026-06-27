@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import {
   getApplicationDetailAction,
@@ -13,6 +13,13 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { formatDate } from '@/lib/utils';
 import type { OrganizerApplicationDTO } from '@eventhub/types';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ApplicantSection } from '@/components/admin/applications/applicant-section';
+import { BusinessSection } from '@/components/admin/applications/business-section';
+import { BankSection } from '@/components/admin/applications/bank-section';
+import { RejectionReason } from '@/components/admin/applications/rejection-reason';
+import { ReviewActions } from '@/components/admin/review-actions';
 
 export default function ApplicationDetailPage() {
   const auth = useAuth();
@@ -77,28 +84,38 @@ export default function ApplicationDetailPage() {
 
   if (!app) {
     return (
-      <div className="text-center py-16">
-        <p className="text-(--text-muted)">Application not found.</p>
-        <button onClick={() => router.back()} className="mt-3 btn btn-ghost btn-sm">
-          ← Back
-        </button>
+      <div className="text-center py-16 space-y-4">
+        <p className="text-text-secondary text-sm">Application not found.</p>
+        <Button
+          variant="outline"
+          onClick={() => router.back()}
+          className="border-border text-text-secondary hover:bg-surface-raised"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl">
-      <button
+    <div className="max-w-3xl space-y-6">
+      {/* Back Button */}
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => router.push('/admin/applications')}
-        className="flex items-center gap-1.5 body-sm text-(--text-muted) hover:text-(--text-primary) mb-5 transition-colors"
+        className="text-text-muted hover:text-text-primary -ml-2"
       >
-        <ArrowLeft className="h-4 w-4" /> Applications
-      </button>
+        <ArrowLeft className="h-4 w-4 mr-1.5" />
+        Applications
+      </Button>
 
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="heading-xl text-(--text-primary)">{app.businessName}</h1>
-          <p className="body-sm text-(--text-muted) mt-0.5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="heading-xl text-text-primary">{app.businessName}</h1>
+          <p className="text-text-secondary text-sm">
             Submitted {formatDate(app.createdAt)}
             {app.reviewedAt && ` · Reviewed ${formatDate(app.reviewedAt)}`}
           </p>
@@ -106,155 +123,42 @@ export default function ApplicationDetailPage() {
         <StatusBadge status={app.status as 'pending' | 'approved' | 'rejected'} />
       </div>
 
+      {/* Success/Error Messages */}
       {success && (
-        <div className="mb-5 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
-          <CheckCircle className="h-4 w-4 shrink-0" /> {success}
-        </div>
+        <Alert className="bg-success-light border-success-200 text-success">
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
       )}
       {error && (
-        <div className="mb-5 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" /> {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
+      {/* Application Sections */}
       <div className="space-y-5">
-        {/* Applicant */}
-        <div className="card p-5">
-          <h2 className="heading-sm text-(--text-primary) mb-4">Applicant</h2>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <Field label="Full Name" value={app.user.fullName} />
-            <Field label="Email" value={app.user.email} />
-            {app.user.memberSince && (
-              <Field label="Member Since" value={formatDate(app.user.memberSince)} />
-            )}
-          </div>
-        </div>
+        <ApplicantSection user={app.user} />
+        <BusinessSection application={app} />
+        <BankSection application={app} />
 
-        {/* Business Info */}
-        <div className="card p-5">
-          <h2 className="heading-sm text-(--text-primary) mb-4">Business Information</h2>
-          <div className="space-y-4 text-sm">
-            <Field label="Business Name" value={app.businessName} />
-            <Field label="Description" value={app.businessDescription} multiline />
-            {app.websiteUrl && <Field label="Website" value={app.websiteUrl} link />}
-            {app.instagramHandle && <Field label="Instagram" value={app.instagramHandle} />}
-          </div>
-        </div>
-
-        {/* Bank */}
-        <div className="card p-5">
-          <h2 className="heading-sm text-(--text-primary) mb-4">Bank Account</h2>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <Field label="Bank" value={app.bankName ?? '—'} />
-            <Field label="Account Name" value={app.bankAccountName} />
-          </div>
-        </div>
-
-        {/* Rejection reason if any */}
         {app.status === 'rejected' && app.rejectionReason && (
-          <div className="rounded-xl bg-red-50 border border-red-200 p-4">
-            <p className="caption text-red-600 font-semibold mb-1">Rejection Reason</p>
-            <p className="body-sm text-red-700">{app.rejectionReason}</p>
-          </div>
+          <RejectionReason reason={app.rejectionReason} />
         )}
 
-        {/* Actions */}
         {app.status === 'pending' && (
-          <div className="card p-5">
-            <h2 className="heading-sm text-(--text-primary) mb-4">Review Actions</h2>
-
-            {!showRejectForm ? (
-              <div className="flex gap-3">
-                <button
-                  onClick={() => void handleApprove()}
-                  disabled={actionLoading === 'approve'}
-                  className="flex items-center gap-2 btn btn-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
-                >
-                  {actionLoading === 'approve' ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4" />
-                  )}
-                  Approve Application
-                </button>
-                <button
-                  onClick={() => setShowRejectForm(true)}
-                  className="flex items-center gap-2 btn btn-ghost btn-md text-red-600 border-red-200 hover:bg-red-50"
-                >
-                  <XCircle className="h-4 w-4" />
-                  Reject
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <label className="label-text">
-                    Rejection Reason <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    rows={4}
-                    className="input-base resize-none"
-                    placeholder="Explain why the application is being rejected (min 10 chars). This will be sent to the applicant."
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => void handleReject()}
-                    disabled={actionLoading === 'reject' || rejectionReason.trim().length < 10}
-                    className="flex items-center gap-2 btn btn-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-                  >
-                    {actionLoading === 'reject' && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Confirm Rejection
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowRejectForm(false);
-                      setRejectionReason('');
-                    }}
-                    className="btn btn-ghost btn-md"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <ReviewActions
+            actionLoading={actionLoading}
+            showRejectForm={showRejectForm}
+            rejectionReason={rejectionReason}
+            onApprove={handleApprove}
+            onReject={handleReject}
+            onRejectionReasonChange={setRejectionReason}
+            onShowRejectFormChange={setShowRejectForm}
+          />
         )}
       </div>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  multiline,
-  link,
-}: {
-  label: string;
-  value: string;
-  multiline?: boolean;
-  link?: boolean;
-}) {
-  return (
-    <div>
-      <p className="caption text-(--text-muted) mb-0.5">{label}</p>
-      {multiline ? (
-        <p className="body-sm text-(--text-primary) whitespace-pre-wrap">{value}</p>
-      ) : link ? (
-        <a
-          href={value}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="body-sm text-(--primary) hover:underline break-all"
-        >
-          {value}
-        </a>
-      ) : (
-        <p className="body-sm text-(--text-primary) font-medium">{value}</p>
-      )}
     </div>
   );
 }

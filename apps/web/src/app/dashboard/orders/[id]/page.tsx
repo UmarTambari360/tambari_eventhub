@@ -1,3 +1,4 @@
+// app/dashboard/orders/[id]/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -8,8 +9,16 @@ import { useAuth } from '@/hooks/use-auth';
 import { getOrderAction } from '@/actions/order.actions';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { formatDate, formatNaira, cn } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import type { OrderDTO, OrderStatus } from '@eventhub/types';
+
+// Shadcn UI imports
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+
+// Import extracted components
+import { AttendeeList } from '@/components/organizer/attendee-list';
+import { OrderSummary } from '@/components/organizer/order-summary';
 
 export default function OrganizerOrderDetailPage() {
   const auth = useAuth();
@@ -42,136 +51,89 @@ export default function OrganizerOrderDetailPage() {
   if (!order) {
     return (
       <div className="text-center py-16">
-        <p className="body-sm text-(--text-muted) mb-3">Order not found.</p>
-        <button onClick={() => router.back()} className="btn btn-ghost btn-md">
-          ← Back
-        </button>
+        <p className="text-text-secondary text-sm mb-4">Order not found.</p>
+        <Button
+          variant="outline"
+          onClick={() => router.back()}
+          className="border-border text-text-secondary hover:bg-surface-raised"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl">
-      <button
+    <div className="max-w-3xl space-y-6">
+      {/* Back Button */}
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => router.push('/dashboard/orders')}
-        className="flex items-center gap-1.5 body-sm text-(--text-muted) hover:text-(--text-primary) mb-5 transition-colors"
+        className="text-text-muted hover:text-text-primary -ml-2"
       >
-        <ArrowLeft className="h-4 w-4" /> Back to orders
-      </button>
+        <ArrowLeft className="h-4 w-4 mr-1.5" />
+        Back to orders
+      </Button>
 
-      <div className="flex items-start justify-between mb-6 gap-4">
-        <div>
-          <h1 className="heading-xl text-(--text-primary) font-mono">{order.orderNumber}</h1>
-          <p className="body-sm text-(--text-muted) mt-0.5">
+      {/* Order Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="heading-xl text-text-primary font-mono">{order.orderNumber}</h1>
+          <p className="text-text-secondary text-sm">
             {order.paidAt ? `Paid ${formatDate(order.paidAt)}` : formatDate(order.createdAt)}
           </p>
         </div>
         <StatusBadge status={order.status as OrderStatus} />
       </div>
 
-      {/* Event info */}
-      <div className="card p-5 mb-4">
-        <p className="overline text-(--text-muted) mb-3">Event</p>
-        <Link
-          href={`/events/${order.event.slug}`}
-          className="heading-sm text-(--primary) hover:underline"
-        >
-          {order.event.title}
-        </Link>
-        <div className="mt-2 flex flex-wrap gap-3 body-sm text-(--text-muted)">
-          <span className="flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5" />
-            {formatDate(order.event.eventDate)}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5" />
-            {order.event.venue}, {order.event.location}
-          </span>
-        </div>
-      </div>
-
-      {/* Customer info */}
-      <div className="card p-5 mb-4">
-        <p className="overline text-(--text-muted) mb-3">Customer</p>
-        <p className="heading-sm text-(--text-primary)">{order.customerName}</p>
-        <p className="body-sm text-(--text-muted)">{order.customerEmail}</p>
-        {order.customerPhone && (
-          <p className="body-sm text-(--text-muted)">{order.customerPhone}</p>
-        )}
-      </div>
-
-      {/* Order items */}
-      <div className="card p-5 mb-4">
-        <p className="overline text-(--text-muted) mb-3">Tickets</p>
-        <div className="space-y-2">
-          {order.items.map((item) => (
-            <div key={item.id} className="flex justify-between body-sm">
-              <span className="text-(--text-secondary)">
-                {item.ticketTypeName} × {item.quantity}
-              </span>
-              <span className="font-medium text-(--text-primary)">
-                {item.pricePerTicket === 0 ? 'FREE' : formatNaira(item.subtotal)}
-              </span>
-            </div>
-          ))}
-          {order.serviceFee > 0 && (
-            <div className="flex justify-between body-sm text-(--text-muted)">
-              <span>Service fee</span>
-              <span>{formatNaira(order.serviceFee)}</span>
-            </div>
-          )}
-          <div className="border-t border-(--border) pt-2 flex justify-between font-bold">
-            <span className="text-(--text-primary)">Total</span>
-            <span className="text-(--primary)">
-              {order.isFreeOrder ? 'FREE' : formatNaira(order.totalAmount)}
+      {/* Event Information */}
+      <Card className="border-border bg-surface-overlay">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-text-muted overline text-xs tracking-wider">Event</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Link
+            href={`/events/${order.event.slug}`}
+            className="heading-sm text-primary-600 hover:text-primary-700 hover:underline transition-colors inline-block"
+          >
+            {order.event.title}
+          </Link>
+          <div className="flex flex-wrap gap-4 text-text-secondary text-sm">
+            <span className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 text-text-muted" />
+              {formatDate(order.event.eventDate)}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <MapPin className="h-4 w-4 text-text-muted" />
+              {order.event.venue}, {order.event.location}
             </span>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
+
+      {/* Customer Information */}
+      <Card className="border-border bg-surface-overlay">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-text-muted overline text-xs tracking-wider">
+            Customer
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <p className="heading-sm text-text-primary">{order.customerName}</p>
+          <p className="text-text-secondary text-sm">{order.customerEmail}</p>
+          {order.customerPhone && (
+            <p className="text-text-secondary text-sm">{order.customerPhone}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Order Summary */}
+      <OrderSummary order={order} />
 
       {/* Attendees */}
-      {order.attendees.length > 0 && (
-        <div className="card p-5">
-          <p className="overline text-(--text-muted) mb-3">Attendees ({order.attendees.length})</p>
-          <div className="space-y-3">
-            {order.attendees.map((attendee) => (
-              <div
-                key={attendee.id}
-                className={cn(
-                  'rounded-xl border p-4 flex items-center justify-between gap-4',
-                  attendee.isRevoked ? 'border-red-200 bg-red-50 opacity-60' : 'border-(--border)'
-                )}
-              >
-                <div className="min-w-0">
-                  <p className="heading-sm text-(--text-primary)">
-                    {attendee.firstName} {attendee.lastName}
-                  </p>
-                  <p className="caption text-(--text-muted)">{attendee.ticketTypeName}</p>
-                  <p className="caption font-mono text-(--text-muted) mt-0.5">
-                    {attendee.ticketCode}
-                  </p>
-                  {attendee.isCheckedIn && (
-                    <p className="caption text-(--success) mt-0.5">
-                      ✓ Checked in {attendee.checkedInAt ? formatDate(attendee.checkedInAt) : ''}
-                    </p>
-                  )}
-                  {attendee.isRevoked && <p className="caption text-(--danger) mt-0.5">Revoked</p>}
-                </div>
-                {attendee.qrCodeUrl && (
-                  <a
-                    href={attendee.qrCodeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0"
-                  >
-                    <img src={attendee.qrCodeUrl} alt="QR" className="h-14 w-14 rounded-lg" />
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {order.attendees.length > 0 && <AttendeeList attendees={order.attendees} />}
     </div>
   );
 }

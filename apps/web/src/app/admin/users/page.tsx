@@ -1,14 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { getUsersAction, type AdminUserRow } from '@/actions/admin/users.actions';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
-import { formatDate, cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { AdminUsersTable } from '@/components/admin/users/admin-users-table';
 
 type RoleFilter = 'all' | 'attendee' | 'organizer' | 'admin';
+
+const ROLE_TABS: { label: string; value: RoleFilter }[] = [
+  { label: 'All Users', value: 'all' },
+  { label: 'Attendees', value: 'attendee' },
+  { label: 'Organizers', value: 'organizer' },
+  { label: 'Admins', value: 'admin' },
+];
 
 export default function AdminUsersPage() {
   const auth = useAuth();
@@ -41,147 +51,124 @@ export default function AdminUsersPage() {
     })();
   }, [auth?.accessToken, page, role, search]);
 
-  const tabs: { label: string; value: RoleFilter }[] = [
-    { label: 'All', value: 'all' },
-    { label: 'Attendees', value: 'attendee' },
-    { label: 'Organizers', value: 'organizer' },
-    { label: 'Admins', value: 'admin' },
-  ];
+  const handleTabChange = (value: RoleFilter) => {
+    setRole(value);
+    setPage(1);
+  };
+
+  const handleSearch = () => {
+    setSearch(searchInput);
+    setPage(1);
+  };
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="heading-xl text-(--text-primary)">Users</h1>
-        <p className="body-sm text-(--text-muted) mt-1">Manage all platform users</p>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="space-y-1">
+        <h1 className="heading-xl text-text-primary">Users</h1>
+        <p className="text-text-secondary text-sm">Manage all platform users</p>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-(--text-muted)" />
-        <input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              setSearch(searchInput);
-              setPage(1);
-            }
-          }}
-          placeholder="Search by name or email…"
-          className="input-base pl-10"
-        />
-      </div>
-
-      {/* Role tabs */}
-      <div className="flex gap-1 mb-6 border-b border-(--border)">
-        {tabs.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => {
-              setRole(tab.value);
-              setPage(1);
+      {/* Search Bar */}
+      <div className="flex gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSearch();
+              }
             }}
-            className={cn(
-              'px-4 py-2.5 body-sm font-medium border-b-2 transition-colors -mb-px',
-              role === tab.value
-                ? 'border-(--primary) text-(--primary)'
-                : 'border-transparent text-(--text-muted) hover:text-(--text-primary)'
-            )}
+            placeholder="Search by name or email…"
+            className="pl-9 border-border bg-surface text-text-primary placeholder:text-text-muted focus:ring-primary-500"
+          />
+        </div>
+        <Button onClick={handleSearch} className="btn-primary">
+          Search
+        </Button>
+      </div>
+
+      {/* Role Tabs */}
+      <div className="flex flex-wrap gap-1 border-b border-border">
+        {ROLE_TABS.map((tab) => (
+          <Button
+            key={tab.value}
+            variant="ghost"
+            size="sm"
+            onClick={() => handleTabChange(tab.value)}
+            className={`
+              rounded-none border-b-2 px-4 py-2.5 h-auto text-sm font-medium
+              transition-colors -mb-px
+              ${
+                role === tab.value
+                  ? 'border-primary-600 text-text-primary hover:text-text-primary hover:bg-transparent'
+                  : 'border-transparent text-text-muted hover:text-text-primary hover:bg-transparent'
+              }
+            `}
           >
             {tab.label}
-          </button>
+          </Button>
         ))}
       </div>
 
+      {/* Content */}
       {loading ? (
         <div className="flex justify-center py-16">
           <LoadingSpinner size="lg" />
         </div>
       ) : users.length === 0 ? (
-        <div className="card border-dashed p-12 text-center">
-          <p className="text-(--text-muted) body-sm">No users found.</p>
-        </div>
+        <Card className="border-dashed border-border bg-surface-overlay">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <p className="text-text-secondary text-sm">No users found.</p>
+            {search && (
+              <Button
+                variant="link"
+                onClick={() => {
+                  setSearch('');
+                  setSearchInput('');
+                  setPage(1);
+                }}
+                className="text-primary-600 mt-2"
+              >
+                Clear search
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       ) : (
         <>
-          <div className="card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-(--surface-raised) border-b border-(--border)">
-                <tr>
-                  {['User', 'Role', 'Status', 'Joined', ''].map((h) => (
-                    <th key={h} className="px-5 py-3 text-left caption text-(--text-muted)">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-(--border)">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-(--surface-raised) transition-colors">
-                    <td className="px-5 py-4">
-                      <p className="font-medium text-(--text-primary)">{user.fullName}</p>
-                      <p className="caption text-(--text-muted)">{user.email}</p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span
-                        className={cn(
-                          'badge',
-                          user.role === 'admin'
-                            ? 'badge-primary'
-                            : user.role === 'organizer'
-                              ? 'badge-info'
-                              : 'badge-neutral'
-                        )}
-                      >
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      {user.isSuspended ? (
-                        <span className="badge badge-danger">Suspended</span>
-                      ) : (
-                        <span className="badge badge-success">Active</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 body-sm text-(--text-muted)">
-                      {formatDate(user.createdAt)}
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <Link
-                        href={`/admin/users/${user.id}`}
-                        className="body-sm font-semibold text-(--primary) hover:text-(--primary-hover)"
-                      >
-                        View →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AdminUsersTable users={users} />
 
+          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between body-sm text-(--text-muted)">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 text-sm text-text-muted">
               <span>
                 Showing {users.length} of {total}
               </span>
-              <div className="flex gap-2">
-                <button
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="btn btn-ghost btn-sm disabled:opacity-40"
+                  className="border-border text-text-secondary hover:bg-surface-raised"
                 >
                   Previous
-                </button>
-                <span className="px-3 py-1.5">
+                </Button>
+                <Badge variant="outline" className="px-3 py-1.5 text-text-primary border-border">
                   {page} / {totalPages}
-                </span>
-                <button
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="btn btn-ghost btn-sm disabled:opacity-40"
+                  className="border-border text-text-secondary hover:bg-surface-raised"
                 >
                   Next
-                </button>
+                </Button>
               </div>
             </div>
           )}

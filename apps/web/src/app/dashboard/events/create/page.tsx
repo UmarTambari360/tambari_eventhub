@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { z } from 'zod';
 import { createEventSchema, type CreateEventInput } from '@eventhub/validators';
 import { useAuth } from '@/hooks/use-auth';
 import { createEventAction } from '@/actions/event.actions';
 import { ImageUpload } from '@/components/shared/image-upload';
-
-// Shadcn UI imports
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,14 +33,27 @@ const CATEGORIES = [
   'Religion',
 ] as const;
 
+// Form-only schema: dates are plain datetime-local strings, validated
+// for presence/format, NOT transformed to ISO. Keeps RHF state stable.
+// This prevents the timing/format mismatch where Zod's ISO conversion
+// would flow back into the datetime-local input and break it.
+const createEventFormSchema = createEventSchema.extend({
+  eventDate: z
+    .string({ required_error: 'Event date is required' })
+    .min(1, 'Event date is required'),
+  eventEndDate: z.string().optional().or(z.literal('')),
+});
+
+type CreateEventFormValues = z.infer<typeof createEventFormSchema>;
+
 export default function CreateEventPage() {
   const auth = useAuth();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const form = useForm<CreateEventInput>({
-    resolver: zodResolver(createEventSchema),
+  const form = useForm<CreateEventFormValues>({
+    resolver: zodResolver(createEventFormSchema),
     defaultValues: {
       tags: [],
       ticketTypes: [
@@ -65,12 +77,21 @@ export default function CreateEventPage() {
   const bannerImageUrl = form.watch('bannerImageUrl');
   const thumbnailUrl = form.watch('thumbnailUrl');
 
-  async function onSubmit(data: CreateEventInput) {
+  async function onSubmit(data: CreateEventFormValues) {
     if (!auth?.accessToken) return;
     setSubmitting(true);
     setSubmitError(null);
 
-    const result = await createEventAction(data, auth.accessToken);
+    // Convert datetime-local -> ISO ONLY here, right before sending to the API.
+    // This never touches RHF's live field state, keeping the input happy
+    // with its expected YYYY-MM-DDTHH:mm format at all times.
+    const payload: CreateEventInput = {
+      ...data,
+      eventDate: new Date(data.eventDate).toISOString(),
+      eventEndDate: data.eventEndDate ? new Date(data.eventEndDate).toISOString() : '',
+    };
+
+    const result = await createEventAction(payload, auth.accessToken);
 
     if (result.success && result.data) {
       router.push(`/dashboard/events/${result.data.id}`);

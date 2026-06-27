@@ -1,16 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { getAdminOrdersAction, type AdminOrderRow } from '@/actions/admin/orders.actions';
-import { StatusBadge } from '@/components/shared/status-badge';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
-import { formatDate, formatNaira, cn } from '@/lib/utils';
-import type { OrderStatus } from '@eventhub/types';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { AdminOrdersTable } from '@/components/admin/orders-table';
 
 type StatusFilter = 'all' | 'paid' | 'pending' | 'failed' | 'refunded' | 'cancelled';
+
+const STATUS_TABS: { label: string; value: StatusFilter }[] = [
+  { label: 'Paid', value: 'paid' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Failed', value: 'failed' },
+  { label: 'Refunded', value: 'refunded' },
+  { label: 'All Orders', value: 'all' },
+];
 
 export default function AdminOrdersPage() {
   const auth = useAuth();
@@ -45,141 +54,124 @@ export default function AdminOrdersPage() {
     })();
   }, [auth?.accessToken, page, status, search]);
 
-  const tabs: { label: string; value: StatusFilter }[] = [
-    { label: 'Paid', value: 'paid' },
-    { label: 'Pending', value: 'pending' },
-    { label: 'Failed', value: 'failed' },
-    { label: 'Refunded', value: 'refunded' },
-    { label: 'All', value: 'all' },
-  ];
+  const handleTabChange = (value: StatusFilter) => {
+    setStatus(value);
+    setPage(1);
+  };
+
+  const handleSearch = () => {
+    setSearch(searchInput);
+    setPage(1);
+  };
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="heading-xl text-(--text-primary)">Orders</h1>
-        <p className="body-sm text-(--text-muted) mt-1">
-          All orders across all events and organizers
-        </p>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="space-y-1">
+        <h1 className="heading-xl text-text-primary">Orders</h1>
+        <p className="text-text-secondary text-sm">All orders across all events and organizers</p>
       </div>
 
-      <div className="relative mb-4">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-(--text-muted)" />
-        <input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              setSearch(searchInput);
-              setPage(1);
-            }
-          }}
-          placeholder="Search by order number or email…"
-          className="input-base pl-10"
-        />
-      </div>
-
-      <div className="flex gap-1 mb-6 border-b border-(--border)">
-        {tabs.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => {
-              setStatus(tab.value);
-              setPage(1);
+      {/* Search Bar */}
+      <div className="flex gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSearch();
+              }
             }}
-            className={cn(
-              'px-4 py-2.5 body-sm font-medium border-b-2 transition-colors -mb-px',
-              status === tab.value
-                ? 'border-(--primary) text-(--primary)'
-                : 'border-transparent text-(--text-muted) hover:text-(--text-primary)'
-            )}
+            placeholder="Search by order number or email…"
+            className="pl-9 border-border bg-surface text-text-primary placeholder:text-text-muted focus:ring-primary-500"
+          />
+        </div>
+        <Button onClick={handleSearch} className="btn-primary">
+          Search
+        </Button>
+      </div>
+
+      {/* Status Tabs */}
+      <div className="flex flex-wrap gap-1 border-b border-border">
+        {STATUS_TABS.map((tab) => (
+          <Button
+            key={tab.value}
+            variant="ghost"
+            size="sm"
+            onClick={() => handleTabChange(tab.value)}
+            className={`
+              rounded-none border-b-2 px-4 py-2.5 h-auto text-sm font-medium
+              transition-colors -mb-px
+              ${
+                status === tab.value
+                  ? 'border-primary-600 text-text-primary hover:text-text-primary hover:bg-transparent'
+                  : 'border-transparent text-text-muted hover:text-text-primary hover:bg-transparent'
+              }
+            `}
           >
             {tab.label}
-          </button>
+          </Button>
         ))}
       </div>
 
+      {/* Content */}
       {loading ? (
         <div className="flex justify-center py-16">
           <LoadingSpinner size="lg" />
         </div>
       ) : orderList.length === 0 ? (
-        <div className="card border-dashed p-12 text-center">
-          <p className="text-(--text-muted) body-sm">No orders found.</p>
-        </div>
+        <Card className="border-dashed border-border bg-surface-overlay">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <p className="text-text-secondary text-sm">No orders found.</p>
+            {search && (
+              <Button
+                variant="link"
+                onClick={() => {
+                  setSearch('');
+                  setSearchInput('');
+                  setPage(1);
+                }}
+                className="text-primary-600 mt-2"
+              >
+                Clear search
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       ) : (
         <>
-          <div className="card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-(--surface-raised) border-b border-(--border)">
-                <tr>
-                  {['Order', 'Customer', 'Event', 'Amount', 'Status', 'Date', ''].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left caption text-(--text-muted)">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-(--border)">
-                {orderList.map((order) => (
-                  <tr key={order.id} className="hover:bg-(--surface-raised)">
-                    <td className="px-4 py-3 font-mono caption text-(--text-secondary)">
-                      {order.orderNumber}
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="body-sm text-(--text-primary) font-medium">
-                        {order.customerName}
-                      </p>
-                      <p className="caption text-(--text-muted)">{order.customerEmail}</p>
-                    </td>
-                    <td className="px-4 py-3 body-sm text-(--text-secondary) max-w-[160px] truncate">
-                      {order.eventTitle ?? '—'}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-(--text-primary)">
-                      {order.isFreeOrder ? 'FREE' : formatNaira(order.totalAmount)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={order.status as OrderStatus} />
-                    </td>
-                    <td className="px-4 py-3 body-sm text-(--text-muted) whitespace-nowrap">
-                      {formatDate(order.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/admin/orders/${order.id}`}
-                        className="body-sm font-semibold text-(--primary) hover:text-(--primary-hover)"
-                      >
-                        View →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AdminOrdersTable orders={orderList} />
 
+          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between body-sm text-(--text-muted)">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 text-sm text-text-muted">
               <span>
                 Showing {orderList.length} of {total}
               </span>
-              <div className="flex gap-2">
-                <button
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="btn btn-ghost btn-sm disabled:opacity-40"
+                  className="border-border text-text-secondary hover:bg-surface-raised"
                 >
                   Previous
-                </button>
-                <span className="px-3 py-1.5">
+                </Button>
+                <Badge variant="outline" className="px-3 py-1.5 text-text-primary border-border">
                   {page} / {totalPages}
-                </span>
-                <button
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="btn btn-ghost btn-sm disabled:opacity-40"
+                  className="border-border text-text-secondary hover:bg-surface-raised"
                 >
                   Next
-                </button>
+                </Button>
               </div>
             </div>
           )}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Save, Loader2, CheckCircle, AlertCircle, Plus, X } from 'lucide-react';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import {
   getAdminSettingsAction,
@@ -9,6 +9,11 @@ import {
   type PlatformSettingsDTO,
 } from '@/actions/admin/settings.actions';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
+import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { SettingsSection } from '@/components/admin/settings-section';
+import { CategoriesManager } from '@/components/admin/categories-manager';
+import { SaveButton } from '@/components/admin/save-button';
 
 export default function AdminSettingsPage() {
   const auth = useAuth();
@@ -73,53 +78,56 @@ export default function AdminSettingsPage() {
     setCategories((prev) => prev.filter((c) => c !== cat));
   }
 
-  if (loading)
+  if (loading) {
     return (
       <div className="flex justify-center py-16">
         <LoadingSpinner size="lg" />
       </div>
     );
+  }
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="heading-xl text-(--text-primary)">Platform Settings</h1>
-        <p className="body-sm text-(--text-muted) mt-1">
+      {/* Page Header */}
+      <div className="space-y-1">
+        <h1 className="heading-xl text-text-primary">Platform Settings</h1>
+        <p className="text-text-secondary text-sm">
           Configure platform-wide behaviour. Changes take effect immediately.
         </p>
       </div>
 
+      {/* Success/Error Messages */}
       {success && (
-        <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
-          <CheckCircle className="h-4 w-4 shrink-0" />
-          {success}
-        </div>
+        <Alert className="bg-success-light border-success-200 text-success">
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
       )}
       {error && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      {/* Service fee */}
-      <div className="card p-5">
-        <h2 className="heading-sm text-(--text-primary) mb-1">Service Fee</h2>
-        <p className="body-sm text-(--text-muted) mb-4">
-          Percentage charged on every paid ticket. Applied via Paystack split on checkout.
-        </p>
+      {/* Service Fee */}
+      <SettingsSection
+        title="Service Fee"
+        description="Percentage charged on every paid ticket. Applied via Paystack split on checkout."
+        currentValue={`${settings?.service_fee_percent}%`}
+      >
         <div className="flex items-center gap-3">
           <div className="relative">
-            <input
+            <Input
               type="number"
               min={0.1}
               max={15}
               step={0.1}
               value={feePercent}
               onChange={(e) => setFeePercent(e.target.value)}
-              className="input-base w-32 pr-8"
+              className="w-32 pr-8 border-border bg-surface text-text-primary focus:ring-primary-500"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 caption text-(--text-muted)">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-xs">
               %
             </span>
           </div>
@@ -128,145 +136,74 @@ export default function AdminSettingsPage() {
             onClick={() => void save('service_fee_percent', feePercent, 'Service fee')}
           />
         </div>
-        <p className="caption text-(--text-muted) mt-2">
-          Current: {settings?.service_fee_percent}%
-        </p>
-      </div>
+      </SettingsSection>
 
-      {/* Max featured */}
-      <div className="card p-5">
-        <h2 className="heading-sm text-(--text-primary) mb-1">Max Featured Events</h2>
-        <p className="body-sm text-(--text-muted) mb-4">
-          Maximum events shown in the homepage featured carousel.
-        </p>
+      {/* Max Featured Events */}
+      <SettingsSection
+        title="Max Featured Events"
+        description="Maximum events shown in the homepage featured carousel."
+      >
         <div className="flex items-center gap-3">
-          <input
+          <Input
             type="number"
             min={1}
             max={20}
             step={1}
             value={maxFeatured}
             onChange={(e) => setMaxFeatured(e.target.value)}
-            className="input-base w-24"
+            className="w-24 border-border bg-surface text-text-primary focus:ring-primary-500"
           />
           <SaveButton
             loading={saving === 'max_featured_events'}
             onClick={() => void save('max_featured_events', maxFeatured, 'Max featured events')}
           />
         </div>
-      </div>
+      </SettingsSection>
 
-      {/* Platform name */}
-      <div className="card p-5">
-        <h2 className="heading-sm text-(--text-primary) mb-1">Platform Name</h2>
-        <p className="body-sm text-(--text-muted) mb-4">Shown in email templates and UI.</p>
+      {/* Platform Name */}
+      <SettingsSection title="Platform Name" description="Shown in email templates and UI.">
         <div className="flex items-center gap-3">
-          <input
+          <Input
             value={platformName}
             onChange={(e) => setPlatformName(e.target.value)}
-            className="input-base w-64"
+            className="w-64 border-border bg-surface text-text-primary focus:ring-primary-500"
           />
           <SaveButton
             loading={saving === 'platform_name'}
             onClick={() => void save('platform_name', platformName, 'Platform name')}
           />
         </div>
-      </div>
+      </SettingsSection>
 
-      {/* Support email */}
-      <div className="card p-5">
-        <h2 className="heading-sm text-(--text-primary) mb-1">Support Email</h2>
-        <p className="body-sm text-(--text-muted) mb-4">
-          Displayed in email footers and the public site.
-        </p>
+      {/* Support Email */}
+      <SettingsSection
+        title="Support Email"
+        description="Displayed in email footers and the public site."
+      >
         <div className="flex items-center gap-3">
-          <input
+          <Input
             type="email"
             value={supportEmail}
             onChange={(e) => setSupportEmail(e.target.value)}
-            className="input-base w-72"
+            className="w-72 border-border bg-surface text-text-primary focus:ring-primary-500"
           />
           <SaveButton
             loading={saving === 'support_email'}
             onClick={() => void save('support_email', supportEmail, 'Support email')}
           />
         </div>
-      </div>
+      </SettingsSection>
 
-      {/* Event categories */}
-      <div className="card p-5">
-        <h2 className="heading-sm text-(--text-primary) mb-1">Event Categories</h2>
-        <p className="body-sm text-(--text-muted) mb-4">
-          Available categories organizers can assign to events.
-        </p>
-
-        <div className="flex flex-wrap gap-2 mb-4">
-          {categories.map((cat) => (
-            <span
-              key={cat}
-              className="flex items-center gap-1.5 badge badge-primary text-sm py-1.5"
-            >
-              {cat}
-              <button
-                onClick={() => removeCategory(cat)}
-                className="hover:text-red-600 transition-colors"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 mb-4">
-          <input
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addCategory();
-              }
-            }}
-            className="input-base w-48"
-            placeholder="New category…"
-            maxLength={30}
-          />
-          <button onClick={addCategory} className="flex items-center gap-1.5 btn btn-ghost btn-sm">
-            <Plus className="h-3.5 w-3.5" /> Add
-          </button>
-        </div>
-
-        <SaveButton
-          loading={saving === 'event_categories'}
-          onClick={() => void saveCategories()}
-          label="Save Categories"
-        />
-      </div>
+      {/* Event Categories */}
+      <CategoriesManager
+        categories={categories}
+        newCategory={newCategory}
+        onNewCategoryChange={setNewCategory}
+        onAddCategory={addCategory}
+        onRemoveCategory={removeCategory}
+        onSaveCategories={saveCategories}
+        isSaving={saving === 'event_categories'}
+      />
     </div>
-  );
-}
-
-function SaveButton({
-  loading,
-  onClick,
-  label = 'Save',
-}: {
-  loading: boolean;
-  onClick: () => void;
-  label?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={loading}
-      className="flex items-center gap-1.5 btn btn-primary btn-sm disabled:opacity-60"
-    >
-      {loading ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <Save className="h-3.5 w-3.5" />
-      )}
-      {label}
-    </button>
   );
 }
